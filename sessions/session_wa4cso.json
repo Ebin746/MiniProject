@@ -1,0 +1,30 @@
+{
+  "sessionId": "session_wa4cso",
+  "stage": "done",
+  "profile": {
+    "name": "EBIN AMSON",
+    "income": 90000,
+    "employment": "ai dev",
+    "existing_emi": 0
+  },
+  "logs": [
+    "User: hi",
+    "Assistant: To get started, could you please tell me your name?",
+    "User: EBIN AMSON",
+    "Assistant: To better understand your financial situation, could you please tell me about your monthly income?",
+    "User: 90k",
+    "Assistant: To further assess your loan eligibility, could you please tell me about your employment, what type of job do you have?",
+    "User: ai dev",
+    "Assistant: To finalize your profile, could you please tell me what your total monthly EMIs are?",
+    "User: nope yet",
+    "Assistant: Could you please provide a numerical value for your total monthly EMIs, even if it's zero, so I can complete your profile?",
+    "User: 0",
+    "Credit Agent: Assessment complete."
+  ],
+  "creditResult": {
+    "foir": 0,
+    "risk": "LOW",
+    "eligible": true,
+    "explanation": "The user has a FOIR of 0% which indicates no existing EMIs, suggesting a low credit risk and making them eligible for credit."
+  }
+}

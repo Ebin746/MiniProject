@@ -1,0 +1,147 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export default function Home() {
+  const [sessionId, setSessionId] = useState('');
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<'sales' | 'credit' | 'done'>('sales');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSessionId(`session_${Math.random().toString(36).substring(7)}`);
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+
+    const userMessage = input.trim();
+    setInput('');
+    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, message: userMessage }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
+      } else {
+        setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
+        setStage(data.session.stage);
+      }
+    } catch (error) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg ring-2 ring-indigo-500/20">
+            A
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
+            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : 'bg-indigo-500'} animate-pulse`} />
+              Stage: {stage}
+            </p>
+          </div>
+        </div>
+        <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
+          ID: {sessionId}
+        </div>
+      </header>
+
+      {/* Chat History */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+      >
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">👋</div>
+            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello! I'm your Loan Assistant.</h2>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+              I can help you check your loan eligibility in minutes. Let's start with your basic details.
+            </p>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+          >
+            <div
+              className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
+                  ? 'bg-indigo-600 text-white rounded-tr-none'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
+                }`}
+            >
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3.5 rounded-2xl rounded-tl-none shadow-sm flex gap-1.5 items-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.3s]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.15s]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+        <div className="max-w-4xl mx-auto flex gap-3 relative">
+          <input
+            className="flex-1 px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm transition-all"
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            disabled={stage === 'done'}
+          />
+          <button
+            className={`px-6 py-2 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${loading || stage === 'done'
+                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
+              }`}
+            onClick={sendMessage}
+            disabled={loading || stage === 'done'}
+          >
+            Send
+          </button>
+        </div>
+        <p className="text-[10px] text-zinc-400 text-center mt-3 uppercase tracking-widest font-semibold">Powered by Mastra & Groq</p>
+      </div>
+    </div>
+  );
+}
