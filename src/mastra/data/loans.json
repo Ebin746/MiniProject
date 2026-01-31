@@ -1,0 +1,42 @@
+[
+    {
+        "id": "pl-001",
+        "name": "Standard Personal Loan",
+        "interestRate": 10.5,
+        "maxAmount": 50000,
+        "tenureMonths": 36,
+        "description": "Our most popular personal loan with flexible repayment terms."
+    },
+    {
+        "id": "pl-002",
+        "name": "Express Quick Loan",
+        "interestRate": 12.0,
+        "maxAmount": 20000,
+        "tenureMonths": 12,
+        "description": "Fast approval and disbursement for immediate financial needs."
+    },
+    {
+        "id": "pl-003",
+        "name": "Green Energy Loan",
+        "interestRate": 8.5,
+        "maxAmount": 100000,
+        "tenureMonths": 60,
+        "description": "Low-interest loans for sustainable energy installations like solar panels."
+    },
+    {
+        "id": "pl-004",
+        "name": "Debt Consolidation Pro",
+        "interestRate": 9.75,
+        "maxAmount": 75000,
+        "tenureMonths": 48,
+        "description": "Consolidate your existing debts into one easy monthly payment."
+    },
+    {
+        "id": "pl-005",
+        "name": "Emergency Medical Loan",
+        "interestRate": 0.0,
+        "maxAmount": 10000,
+        "tenureMonths": 6,
+        "description": "Interest-free short term loan for medical emergencies."
+    }
+]

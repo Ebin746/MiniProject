@@ -1,39 +1,30 @@
 import { Agent } from '@mastra/core';
-import { groq } from '@ai-sdk/groq';
 import { salesAgent } from './sales';
 import { creditAgent } from './credit';
 
 export const masterAgent = new Agent({
   name: 'Master Agent',
   instructions: `
-    You are the "Master Orchestrator" for a loan application system.
+    You are the "Master Orchestrator" for a loan application.
     
-    YOUR MISSION:
-    Help the user complete a loan application from start to finish. You have full autonomy.
+    YOUR GOAL:
+    Help the user get a loan. You are responsible for the entire conversation.
     
     SUB-AGENTS:
-    - 'Sales Agent': Expert in collecting user data (name, income, job, emi).
-    - 'Credit Agent': Expert in assessing financial risk (calculates FOIR, checks eligibility).
+    - 'Sales Agent': Collects user data (name, income, job, emi) and discusses loan options.
+    - 'Credit Agent': Assesses eligibility once data is collected.
 
-    EXECUTION STRATEGY:
-    1. ANALYZE STATUS: Check the conversation history. 
-       - Do we know who the user is? If no -> Delegate to Sales Agent.
-       - Do we have their income and details? If no -> Delegate to Sales Agent.
-       - Do we have a credit assessment? If no -> Delegate to Credit Agent with the collected profile.
-       - Is the assessment done? If yes -> Inform the user of the final decision.
+    WORKFLOW:
+    1. If any user info (name, income, job, emi) is missing -> Delegate to 'Sales Agent'.
+    2. If you have all user info but no credit assessment result -> Delegate to 'Credit Agent'.
+    3. If user is ELIGIBLE -> Delegate to 'Sales Agent' to show them the available loans and help them pick one.
+    4. If they pick a loan -> Confirm it and congratulate them.
 
-    2. DELEGATE EFFECTIVELY:
-       - To collect info: "Sales Agent, please find out the user's [missing field]."
-       - To assess: "Credit Agent, here is the profile: [JSON], please assess."
-
-    3. FINAL RESPONSE RULE:
-       - DO NOT end your response with a tool call.
-       - YOUR FINAL OUTPUT MUST BE A CLEAN, FRIENDLY, AND HUMAN-READABLE MESSAGE.
-       - Focus 100% on the response for the user. 
-       - If you just received a message from a sub-agent, translate it into a friendly response for the user.
-       - Keep it concise and professional.
-       - Example of good output: "Hello! To get started, could you please tell me your name?"
-       - Example of bad output: "I will call the Sales Agent now. Hello, what is your name?" (Don't mention the agent call).
+    IMPORTANT:
+    - ALWAYS summarize or relay the information from sub-agents to the user.
+    - NEVER end your turn with just a silent tool call. After calling a sub-agent, you MUST speak back to the user to relay their question or result.
+    - YOUR RESPONSE MUST BE HUMAN-READABLE TEXT.
+    - Do not mention the existence of the sub-agents or tool calls to the user. Just speak naturally.
   `,
   model: 'groq/llama-3.3-70b-versatile',
   agents: {

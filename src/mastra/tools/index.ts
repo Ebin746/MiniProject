@@ -19,3 +19,17 @@ export const calculateFOIR = createTool({
         };
     }
 });
+
+// Tool for the Sales Agent to fetch available loan options
+export const getAvailableLoans = createTool({
+    id: 'getAvailableLoans',
+    description: 'Fetch available personal loan options from the database.',
+    inputSchema: z.object({}), // No input needed
+    execute: async () => {
+        // In a real app, this would be a DB call
+        const loans = await import('../data/loans.json');
+        return {
+            loans: loans.default,
+        };
+    }
+});
