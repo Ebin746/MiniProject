@@ -1,67 +1,140 @@
-import { NextResponse } from 'next/server';
-import { mastra } from '@/mastra';
-import { sessionManager } from '@/lib/session-manager';
+import { NextResponse } from "next/server";
+import { masterAgent } from "@/mastra/agents/master";
+import { sessionManager } from "@/lib/session-manager";
 
 export async function POST(req: Request) {
-    try {
-        const { sessionId, message } = await req.json();
+  try {
+    const { sessionId, message } = await req.json();
 
-        if (!sessionId) {
-            return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
-        }
-
-        const session = sessionManager.getSession(sessionId);
-        session.logs.push(`User: ${message}`);
-
-        console.log(`[DEBUG] Session ID: ${sessionId}`);
-        console.log(`[DEBUG] Incoming Message: ${message}`);
-
-        const { masterAgent } = mastra.getAgents();
-
-        // DELEGATE EVERYTHING TO THE MASTER AGENT
-        const context = session.logs.join('\n');
-
-        console.log('[DEBUG] Calling Master Agent.generate()...');
-
-        const result = await masterAgent.generate(`${context}\nUser: ${message}`, {
-            onStepFinish: (step: any) => {
-                console.log(`[DEBUG] STEP FINISHED:`);
-                console.log(`- Step Type: ${step.type}`);
-                if (step.text) console.log(`- Step Text Snippet: "${step.text.substring(0, 50)}..."`);
-                if (step.toolCalls) console.log(`- Step Tool Calls: ${step.toolCalls.length}`);
-            }
-        });
-
-        console.log('[DEBUG] Generation complete.');
-        console.log(`[DEBUG] Total steps: ${result.steps?.length || 0}`);
-
-        let agentResponse = result.text || '';
-
-        // Emergency fallback: If text is empty but we have steps, try to get the text from the previous steps
-        if (!agentResponse && result.steps?.length) {
-            console.log('[DEBUG] result.text is empty. Searching steps for text...');
-            for (let i = result.steps.length - 1; i >= 0; i--) {
-                const step = result.steps[i];
-                if (step.text) {
-                    agentResponse = step.text;
-                    console.log(`[DEBUG] Found text in step ${i}`);
-                    break;
-                }
-            }
-        }
-
-        if (!agentResponse) {
-            console.warn('[DEBUG] WARNING: NO RESPONSE TEXT FOUND.');
-            agentResponse = "I have processed your request. Is there anything specific you would like to know next?";
-        }
-
-        session.logs.push(`Assistant: ${agentResponse}`);
-        console.log(`[DEBUG] Final Response: "${agentResponse.substring(0, 50)}..."`);
-
-        return NextResponse.json({ response: agentResponse, session });
-
-    } catch (error: any) {
-        console.error('Chat API Error:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    if (!sessionId || !message) {
+      return NextResponse.json(
+        { error: "sessionId and message are required" },
+        { status: 400 }
+      );
     }
+
+    // Get or create session
+    const session = sessionManager.getSession(sessionId);
+
+    // Initialize profile if missing (important)
+    if (!session.profile) {
+      session.profile = {};
+    }
+
+    // Save user message
+    session.logs.push(`User: ${message}`);
+
+    // Keep only last 4 message pairs (8 messages: 4 user + 4 assistant)
+    // This ensures we maintain the most recent conversation context
+    if (session.logs.length > 8) {
+      session.logs = session.logs.slice(-8);
+    }
+
+    // Prepare context with structured memory
+    const systemContext = `
+Current User Profile:
+${JSON.stringify(session.profile, null, 2)}
+
+${session.creditResult ? `Credit Assessment Result:
+${JSON.stringify(session.creditResult, null, 2)}
+` : ''}
+
+${session.selectedLoan ? `Selected Loan:
+${JSON.stringify(session.selectedLoan, null, 2)}
+` : ''}
+
+${session.pdfPath ? `PDF Document: ${session.pdfPath}` : ''}
+
+Conversation History (Last 4 message pairs):
+${session.logs.join("\n")}
+`;
+
+    // Call master agent
+    const result = await masterAgent.generate([
+      {
+        role: "system",
+        content: systemContext
+      },
+      {
+        role: "user",
+        content: message
+      }
+    ]);
+
+    const reply = result.text;
+
+    // Save assistant reply
+    session.logs.push(`Assistant: ${reply}`);
+
+    // Keep only last 4 message pairs (8 messages) after adding assistant reply
+    if (session.logs.length > 8) {
+      session.logs = session.logs.slice(-8);
+    }
+
+    // Try to extract JSON and update structured memory
+    try {
+      const jsonMatch = reply.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        const data = JSON.parse(jsonMatch[0]);
+
+        // Update profile if user data is present
+        if (data.name || data.income || data.employment || data.existing_emi) {
+          session.profile = {
+            ...session.profile,
+            ...data
+          };
+        }
+
+        // Update credit result if present
+        if (data.foir !== undefined && data.risk && data.eligible !== undefined) {
+          session.creditResult = {
+            foir: data.foir,
+            risk: data.risk,
+            eligible: data.eligible,
+            explanation: data.explanation || ''
+          };
+        }
+
+        // Update selected loan if present
+        if (data.loanName || data.selectedLoan) {
+          const loanData = data.selectedLoan || data;
+          session.selectedLoan = {
+            name: loanData.loanName || loanData.name,
+            amount: loanData.loanAmount || loanData.amount,
+            tenure: loanData.loanTenure || loanData.tenure,
+            interestRate: loanData.interestRate || loanData.interest_rate
+          };
+        }
+
+        // Update PDF path if present
+        if (data.pdfPath) {
+          session.pdfPath = data.pdfPath;
+          session.stage = 'done';
+        }
+      }
+    } catch (err) {
+      console.warn("No valid JSON found for memory update");
+    }
+
+    // Save updated session
+    sessionManager.saveSession(session);
+
+    return NextResponse.json({
+      response: reply,
+      session: session,
+      profile: session.profile,
+      creditResult: session.creditResult,
+      selectedLoan: session.selectedLoan,
+      pdfPath: session.pdfPath
+    });
+
+  } catch (error) {
+    console.error("Route Error:", error);
+
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
 }

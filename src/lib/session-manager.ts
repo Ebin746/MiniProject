@@ -15,11 +15,20 @@ export interface CreditResult {
   explanation: string;
 }
 
+export interface SelectedLoan {
+  name: string;
+  amount: number;
+  tenure: number;
+  interestRate: number;
+}
+
 export interface SessionData {
   sessionId: string;
-  stage: 'sales' | 'credit' | 'done';
+  stage: 'sales' | 'credit' | 'loan_selection' | 'docs' | 'done';
   profile: UserProfile;
   creditResult?: CreditResult;
+  selectedLoan?: SelectedLoan;
+  pdfPath?: string;
   logs: string[];
 }
 
@@ -44,6 +53,10 @@ class SessionManager {
       this.sessions.set(sessionId, newSession);
     }
     return this.sessions.get(sessionId)!;
+  }
+
+  saveSession(session: SessionData): void {
+    this.sessions.set(session.sessionId, session);
   }
 
   updateSession(sessionId: string, data: Partial<SessionData>): void {
