@@ -9,12 +9,23 @@ export const calculateFOIR = createTool({
     id: 'calculateFOIR',
     description: 'Calculate the Fixed Obligation to Income Ratio (FOIR).',
     inputSchema: z.object({
-        income: z.number().describe('Monthly income'),
-        existing_emi: z.number().describe('Total monthly EMIs'),
+        income: z.union([z.number(), z.string()]).describe('Monthly income'),
+        existing_emi: z.union([z.number(), z.string()]).describe('Total monthly EMIs'),
     }),
     execute: async ({ context }) => {
-        const { income, existing_emi } = context;
-        if (income === 0) return { foir: 0, error: "Income cannot be zero" };
+        const parseValue = (val: number | string): number => {
+            if (typeof val === 'number') return val;
+            const normalized = val.toLowerCase().trim();
+            if (normalized.endsWith('k')) return parseFloat(normalized.slice(0, -1)) * 1000;
+            if (normalized.endsWith('m')) return parseFloat(normalized.slice(0, -1)) * 1000000;
+            return parseFloat(normalized.replace(/[^0-9.]/g, ''));
+        };
+
+        const income = parseValue(context.income);
+        const existing_emi = parseValue(context.existing_emi);
+
+        if (isNaN(income) || income === 0) return { foir: 0, error: "Invalid or zero income" };
+        if (isNaN(existing_emi)) return { foir: 0, error: "Invalid EMI value" };
 
         const foir = (existing_emi / income) * 100;
         return {
@@ -43,16 +54,32 @@ export const generateLoanPDF = createTool({
     description: 'Generate a PDF document for loan confirmation with user and loan details.',
     inputSchema: z.object({
         name: z.string().describe('User name'),
-        income: z.number().describe('Monthly income'),
+        income: z.union([z.number(), z.string()]).describe('Monthly income'),
         employment: z.string().describe('Employment type'),
-        existing_emi: z.number().describe('Existing EMI'),
+        existing_emi: z.union([z.number(), z.string()]).describe('Existing EMI'),
         loanName: z.string().describe('Name of the loan'),
-        loanAmount: z.number().describe('Loan amount'),
-        loanTenure: z.number().describe('Loan tenure in months'),
-        interestRate: z.number().describe('Interest rate percentage'),
+        loanAmount: z.union([z.number(), z.string()]).describe('Loan amount'),
+        loanTenure: z.union([z.number(), z.string()]).describe('Loan tenure in months'),
+        interestRate: z.union([z.number(), z.string()]).describe('Interest rate percentage'),
     }),
     execute: async ({ context }) => {
-        const { name, income, employment, existing_emi, loanName, loanAmount, loanTenure, interestRate } = context;
+        const parseValue = (val: number | string): number => {
+            if (typeof val === 'number') return val;
+            const normalized = val.toLowerCase().trim();
+            if (normalized.endsWith('k')) return parseFloat(normalized.slice(0, -1)) * 1000;
+            if (normalized.endsWith('m')) return parseFloat(normalized.slice(0, -1)) * 1000000;
+            return parseFloat(normalized.replace(/[^0-9.]/g, ''));
+        };
+
+        const name = context.name;
+        const employment = context.employment;
+        const loanName = context.loanName;
+
+        const income = parseValue(context.income);
+        const existing_emi = parseValue(context.existing_emi);
+        const loanAmount = parseValue(context.loanAmount);
+        const loanTenure = parseValue(context.loanTenure);
+        const interestRate = parseValue(context.interestRate);
 
         try {
             // Create PDF directory if it doesn't exist

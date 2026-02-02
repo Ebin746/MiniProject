@@ -13,6 +13,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<'sales' | 'credit' | 'done'>('sales');
+  const [pdfPath, setPdfPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,12 +42,15 @@ export default function Home() {
       });
 
       const data = await response.json();
-
+      console.log(data);
       if (data.error) {
         setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
       } else {
         setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
         setStage(data.session.stage);
+        if (data.pdfPath) {
+          setPdfPath(data.pdfPath);
+        }
       }
     } catch (error) {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }]);
@@ -98,8 +102,8 @@ export default function Home() {
           >
             <div
               className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-tr-none'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
+                ? 'bg-indigo-600 text-white rounded-tr-none'
+                : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
                 }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -114,6 +118,25 @@ export default function Home() {
               <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.15s]" />
               <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce" />
             </div>
+          </div>
+        )}
+
+        {pdfPath && (
+          <div className="flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <a
+              href={`http://localhost:3000/${pdfPath}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold text-sm group"
+            >
+              <svg className="w-5 h-5 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Loan Confirmation PDF
+              <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           </div>
         )}
       </div>
@@ -131,8 +154,8 @@ export default function Home() {
           />
           <button
             className={`px-6 py-2 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${loading || stage === 'done'
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
+              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
               }`}
             onClick={sendMessage}
             disabled={loading || stage === 'done'}

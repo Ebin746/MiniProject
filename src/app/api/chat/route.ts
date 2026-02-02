@@ -13,8 +13,17 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log('Received message:', message, 'for session:', sessionId);
+
     // Get or create session
     const session = sessionManager.getSession(sessionId);
+
+    console.log('--- SESSION START ---');
+    console.log('Session ID:', sessionId);
+    console.log('Profile:', JSON.stringify(session.profile, null, 2));
+    console.log('Credit:', JSON.stringify(session.creditResult, null, 2));
+    console.log('Loan:', JSON.stringify(session.selectedLoan, null, 2));
+    console.log('---------------------');
 
     // Initialize profile if missing (important)
     if (!session.profile) {
@@ -27,7 +36,7 @@ export async function POST(req: Request) {
     // Keep only last 4 message pairs (8 messages: 4 user + 4 assistant)
     // This ensures we maintain the most recent conversation context
     if (session.logs.length > 8) {
-      session.logs = session.logs.slice(-8);
+      session.logs = session.logs.slice(-10);
     }
 
     // Prepare context with structured memory
@@ -49,6 +58,8 @@ Conversation History (Last 4 message pairs):
 ${session.logs.join("\n")}
 `;
 
+    console.log('System Context sent to agent:', systemContext.substring(0, 200) + '...');
+
     // Call master agent
     const result = await masterAgent.generate([
       {
@@ -61,64 +72,132 @@ ${session.logs.join("\n")}
       }
     ]);
 
-    const reply = result.text;
+    console.log('Agent text result:', result.text);
+
+    // Better tool result logging
+    if (result.toolResults) {
+      console.log('Tool results found:', result.toolResults.length);
+      result.toolResults.forEach((tr: any, i) => {
+        console.log(`Tool Result ${i}:`, {
+          toolName: tr.toolName,
+          resultType: typeof tr.result,
+          resultPreview: typeof tr.result === 'string' ? tr.result.substring(0, 200) : 'object'
+        });
+      });
+    }
+
+    let reply = result.text || "";
+
+    // Clean up function call syntax that shouldn't be shown to users
+    reply = reply.replace(/<function=[^>]*>[\s\S]*?<\/function>/g, '').trim();
+    reply = reply.replace(/<function=[^>]*\{[^}]*\}>/g, '').trim();
+
+    // Fallback if agent returns empty response
+    if (!reply || reply.length === 0) {
+      console.warn('Agent returned empty response text');
+      // If there are tool results (sub-agent responses), use the last one as the reply if it's text
+      if (result.toolResults && result.toolResults.length > 0) {
+        const lastResult = result.toolResults[result.toolResults.length - 1] as any;
+        if (typeof lastResult.result === 'string' && !lastResult.result.startsWith('{')) {
+          reply = lastResult.result;
+          console.log('Using last tool result as reply fallback:', reply.substring(0, 50) + '...');
+        } else {
+          reply = "I've processed your request. What would you like to do next?";
+        }
+      } else {
+        reply = "I'm sorry, I'm having trouble processing that. Could you please rephrase your request?";
+      }
+    }
+
+    // Process tool results for specific actions (like PDF generation)
+    if (result.toolResults && result.toolResults.length > 0) {
+      for (const toolResult of result.toolResults) {
+        const tr = toolResult as any;
+        if (tr.toolName === 'generateLoanPDF' && tr.result) {
+          try {
+            const pdfData = typeof tr.result === 'string' ? JSON.parse(tr.result) : tr.result;
+            if (pdfData.pdfPath) {
+              session.pdfPath = pdfData.pdfPath;
+              session.stage = 'done';
+            }
+          } catch (e) { console.warn('PDF parse error:', e); }
+        }
+      }
+    }
 
     // Save assistant reply
     session.logs.push(`Assistant: ${reply}`);
 
-    // Keep only last 4 message pairs (8 messages) after adding assistant reply
-    if (session.logs.length > 8) {
+    // Update session logs limit
+    if (session.logs.length > 10) {
       session.logs = session.logs.slice(-8);
     }
 
-    // Try to extract JSON and update structured memory
-    try {
-      const jsonMatch = reply.match(/\{[\s\S]*\}/);
+    // --- RESONANT STATE EXTRACTION ---
+    // Extract JSON from BOTH the reply text and ALL tool results
+    const sourcesToScan = [
+      reply,
+      ...(result.toolResults?.map((tr: any) => typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result)) || [])
+    ];
 
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[0]);
+    for (const source of sourcesToScan) {
+      if (!source) continue;
+      const jsonMatches = Array.from(source.matchAll(/\{[\s\S]*?\}/g));
 
-        // Update profile if user data is present
-        if (data.name || data.income || data.employment || data.existing_emi) {
-          session.profile = {
-            ...session.profile,
-            ...data
-          };
-        }
+      for (const match of jsonMatches as any[]) {
+        try {
+          const data = JSON.parse(match[0]);
 
-        // Update credit result if present
-        if (data.foir !== undefined && data.risk && data.eligible !== undefined) {
-          session.creditResult = {
-            foir: data.foir,
-            risk: data.risk,
-            eligible: data.eligible,
-            explanation: data.explanation || ''
-          };
-        }
+          // Profile updates
+          if (data.name || data.income || data.employment || data.existing_emi || data.job) {
+            session.profile = {
+              ...session.profile,
+              ...data,
+              employment: data.employment || data.job || session.profile.employment
+            };
+            console.log('Updated profile from source:', session.profile);
+          }
 
-        // Update selected loan if present
-        if (data.loanName || data.selectedLoan) {
-          const loanData = data.selectedLoan || data;
-          session.selectedLoan = {
-            name: loanData.loanName || loanData.name,
-            amount: loanData.loanAmount || loanData.amount,
-            tenure: loanData.loanTenure || loanData.tenure,
-            interestRate: loanData.interestRate || loanData.interest_rate
-          };
-        }
+          // Credit updates
+          if (data.eligible !== undefined && (data.foir !== undefined || data.risk)) {
+            session.creditResult = {
+              foir: data.foir ?? 0,
+              risk: data.risk ?? 'MEDIUM',
+              eligible: data.eligible,
+              explanation: data.explanation || ''
+            };
+            console.log('Updated credit result from source:', session.creditResult);
+          }
 
-        // Update PDF path if present
-        if (data.pdfPath) {
-          session.pdfPath = data.pdfPath;
-          session.stage = 'done';
-        }
+          // Loan selection updates
+          if (data.loanName || data.selectedLoan || (data.amount && data.tenure)) {
+            const loanData = data.selectedLoan || data;
+            session.selectedLoan = {
+              name: loanData.loanName || loanData.name || 'Personal Loan',
+              amount: loanData.loanAmount || loanData.amount,
+              tenure: loanData.loanTenure || loanData.tenure,
+              interestRate: loanData.interestRate || loanData.interest_rate || loanData.rate
+            };
+            console.log('Updated selected loan from source:', session.selectedLoan);
+          }
+
+          // PDF path updates
+          if (data.pdfPath && !session.pdfPath) {
+            session.pdfPath = data.pdfPath;
+            session.stage = 'done';
+            console.log('Updated PDF path from source:', session.pdfPath);
+          }
+        } catch (err) { /* ignore non-JSON matches */ }
       }
-    } catch (err) {
-      console.warn("No valid JSON found for memory update");
     }
 
     // Save updated session
     sessionManager.saveSession(session);
+
+    console.log('--- SESSION END ---');
+    console.log('Updated Profile:', JSON.stringify(session.profile, null, 2));
+    console.log('Updated Loan:', JSON.stringify(session.selectedLoan, null, 2));
+    console.log('-------------------');
 
     return NextResponse.json({
       response: reply,
