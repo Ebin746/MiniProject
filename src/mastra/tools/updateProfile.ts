@@ -3,13 +3,13 @@ import { z } from 'zod';
 
 export const updateProfile = createTool({
     id: 'updateProfile',
-    description: 'Update the user profile with extracted data (name, income, employment, existing_emi).',
+    description: 'Update the user profile with provided data. Use ONLY for non-empty values.',
     inputSchema: z.object({
-        name: z.string().optional().describe('Full name'),
-        income: z.union([z.number(), z.string()]).optional().describe('Monthly income'),
-        employment: z.string().optional().describe('Employment type (salaried, self-employed, etc.)'),
-        existing_emi: z.union([z.number(), z.string()]).optional().describe('Total monthly EMIs'),
-    }),
+        name: z.string().describe('Full name. Pass ONLY if provided.'),
+        income: z.union([z.number(), z.string()]).describe('Monthly income. Pass ONLY if provided.'),
+        employment: z.string().describe('Employment type. Pass ONLY if provided.'),
+        existing_emi: z.union([z.number(), z.string()]).describe('Existing EMIs. Pass ONLY if provided.'),
+    }).partial(), // Keep as partial so agent can pass only what it has
     execute: async ({ context }) => {
         return {
             ...context,
