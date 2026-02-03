@@ -13,8 +13,17 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log('Received message:', message, 'for session:', sessionId);
+
     // Get or create session
     const session = sessionManager.getSession(sessionId);
+
+    console.log('--- SESSION START ---');
+    console.log('Session ID:', sessionId);
+    console.log('Profile:', JSON.stringify(session.profile, null, 2));
+    console.log('Credit:', JSON.stringify(session.creditResult, null, 2));
+    console.log('Loan:', JSON.stringify(session.selectedLoan, null, 2));
+    console.log('---------------------');
 
     // Initialize profile if missing (important)
     if (!session.profile) {
@@ -24,30 +33,19 @@ export async function POST(req: Request) {
     // Save user message
     session.logs.push(`User: ${message}`);
 
-    // Keep only last 4 message pairs (8 messages: 4 user + 4 assistant)
-    // This ensures we maintain the most recent conversation context
-    if (session.logs.length > 8) {
-      session.logs = session.logs.slice(-8);
+    // Keep only last 2 message pairs (4 messages) to stay within rate limits
+    if (session.logs.length > 4) {
+      session.logs = session.logs.slice(-4);
     }
 
-    // Prepare context with structured memory
-    const systemContext = `
-Current User Profile:
-${JSON.stringify(session.profile, null, 2)}
+    // Aggressive compression for tight Groq limits
+    const p = JSON.stringify(session.profile);
+    const c = session.creditResult ? `|CREDIT:${JSON.stringify(session.creditResult)}` : '';
+    const l = session.selectedLoan ? `|LOAN:${JSON.stringify(session.selectedLoan)}` : '';
+    const h = session.logs.join("|");
+    const systemContext = `PROFILE:${p}${c}${l}\nHISTORY:${h}`;
 
-${session.creditResult ? `Credit Assessment Result:
-${JSON.stringify(session.creditResult, null, 2)}
-` : ''}
-
-${session.selectedLoan ? `Selected Loan:
-${JSON.stringify(session.selectedLoan, null, 2)}
-` : ''}
-
-${session.pdfPath ? `PDF Document: ${session.pdfPath}` : ''}
-
-Conversation History (Last 4 message pairs):
-${session.logs.join("\n")}
-`;
+    console.log('System Context sent to agent:', systemContext.substring(0, 200) + '...');
 
     // Call master agent
     const result = await masterAgent.generate([
@@ -61,64 +59,42 @@ ${session.logs.join("\n")}
       }
     ]);
 
-    const reply = result.text;
+    console.log('Agent text result:', result.text);
+
+    // Better tool result logging
+    if (result.toolResults) {
+      console.log('Tool results found:', result.toolResults.length);
+      result.toolResults.forEach((tr: any, i) => {
+        const tName = tr.toolName || tr.name || 'unknown';
+        console.log(`Tool Result ${i} raw:`, JSON.stringify(tr, null, 2));
+        console.log(`Tool Result ${i} (${tName}):`, {
+          resultType: typeof tr.result,
+          resultPreview: typeof tr.result === 'string' ? tr.result.substring(0, 200) : 'object'
+        });
+      });
+    }
+
+    let reply = result.text || "";
+
+
+
+    // Process tool results for specific state updates (Mastra internal sync)
+
 
     // Save assistant reply
     session.logs.push(`Assistant: ${reply}`);
 
-    // Keep only last 4 message pairs (8 messages) after adding assistant reply
-    if (session.logs.length > 8) {
-      session.logs = session.logs.slice(-8);
-    }
-
-    // Try to extract JSON and update structured memory
-    try {
-      const jsonMatch = reply.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[0]);
-
-        // Update profile if user data is present
-        if (data.name || data.income || data.employment || data.existing_emi) {
-          session.profile = {
-            ...session.profile,
-            ...data
-          };
-        }
-
-        // Update credit result if present
-        if (data.foir !== undefined && data.risk && data.eligible !== undefined) {
-          session.creditResult = {
-            foir: data.foir,
-            risk: data.risk,
-            eligible: data.eligible,
-            explanation: data.explanation || ''
-          };
-        }
-
-        // Update selected loan if present
-        if (data.loanName || data.selectedLoan) {
-          const loanData = data.selectedLoan || data;
-          session.selectedLoan = {
-            name: loanData.loanName || loanData.name,
-            amount: loanData.loanAmount || loanData.amount,
-            tenure: loanData.loanTenure || loanData.tenure,
-            interestRate: loanData.interestRate || loanData.interest_rate
-          };
-        }
-
-        // Update PDF path if present
-        if (data.pdfPath) {
-          session.pdfPath = data.pdfPath;
-          session.stage = 'done';
-        }
-      }
-    } catch (err) {
-      console.warn("No valid JSON found for memory update");
+    if (session.logs.length > 4) {
+      session.logs = session.logs.slice(-4);
     }
 
     // Save updated session
     sessionManager.saveSession(session);
+
+    console.log('--- SESSION END ---');
+    console.log('Updated Profile:', JSON.stringify(session.profile, null, 2));
+    console.log('Updated Loan:', JSON.stringify(session.selectedLoan, null, 2));
+    console.log('-------------------');
 
     return NextResponse.json({
       response: reply,

@@ -13,6 +13,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<'sales' | 'credit' | 'done'>('sales');
+  const [pdfPath, setPdfPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,12 +42,15 @@ export default function Home() {
       });
 
       const data = await response.json();
-
+      console.log(data);
       if (data.error) {
         setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
       } else {
         setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
         setStage(data.session.stage);
+        if (data.pdfPath) {
+          setPdfPath(data.pdfPath);
+        }
       }
     } catch (error) {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }]);
@@ -98,8 +102,8 @@ export default function Home() {
           >
             <div
               className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-tr-none'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
+                ? 'bg-indigo-600 text-white rounded-tr-none'
+                : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
                 }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -127,15 +131,14 @@ export default function Home() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            disabled={stage === 'done'}
           />
           <button
-            className={`px-6 py-2 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${loading || stage === 'done'
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
+            className={`px-6 py-2 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${loading
+              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
               }`}
             onClick={sendMessage}
-            disabled={loading || stage === 'done'}
+            disabled={loading}
           >
             Send
           </button>
