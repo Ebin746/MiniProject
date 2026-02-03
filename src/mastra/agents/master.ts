@@ -1,22 +1,19 @@
 import { Agent } from '@mastra/core';
 import { MASTER_AGENT_PROMPT } from '../prompts/master';
-import { salesAgent } from './sales';
-import { creditAgent } from './credit';
-import { getAvailableLoans, generateLoanPDF } from '../tools';
+import { getAvailableLoans, generateLoanPDF, updateProfile, calculateFOIR } from '../tools';
+import { PRIMARY_MODEL } from '../llms';
 
 export const masterAgent = new Agent({
   name: 'Master Agent',
   instructions: MASTER_AGENT_PROMPT,
-  model: 'groq/llama-3.3-70b-versatile',
-  agents: {
-    salesAgent,
-    creditAgent,
-  },
+  model: PRIMARY_MODEL,
   tools: {
     getAvailableLoans,
-    generateLoanPDF
+    generateLoanPDF,
+    updateProfile,
+    calculateFOIR
   },
   defaultGenerateOptions: {
-    maxSteps: 6,
+    maxSteps: 10,
   }
 });
