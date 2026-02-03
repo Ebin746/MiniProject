@@ -44,10 +44,14 @@ WORKFLOW (HIGH LEVEL)
 
 3. If user is eligible and no loan chosen:
    → USE YOUR 'getAvailableLoans' TOOL directly.
-   → Present the options to the user clearly.
-   → Ask the user to select one (e.g., first , second one).
+   → Present options clearly.
+   → Ask the user to select one (e.g., first, second one, or pl-001).
 
-4. If loan is chosen AND amount/tenure are confirmed:
+4. If loan is chosen but final amount/tenure NOT confirmed:
+   → ASK the user directly for their desired amount and tenure for the selected loan.
+   → DO NOT call Sales Agent for this.
+
+5. If loan is chosen AND amount/tenure are confirmed:
    → USE YOUR 'generateLoanPDF' TOOL directly.
    → Inform the user their confirmation is ready.
 

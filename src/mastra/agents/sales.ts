@@ -5,7 +5,7 @@ import { getAvailableLoans } from '../tools';
 export const salesAgent = new Agent({
   name: 'Sales Agent',
   instructions: SALES_AGENT_PROMPT,
-  model: 'groq/qwen/qwen3-32b',
+  model: 'groq/llama-3.3-70b-versatile',
   tools: {
     getAvailableLoans
   },

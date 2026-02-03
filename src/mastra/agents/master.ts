@@ -7,7 +7,7 @@ import { getAvailableLoans, generateLoanPDF } from '../tools';
 export const masterAgent = new Agent({
   name: 'Master Agent',
   instructions: MASTER_AGENT_PROMPT,
-  model: 'groq/qwen/qwen3-32b',
+  model: 'groq/llama-3.3-70b-versatile',
   agents: {
     salesAgent,
     creditAgent,
