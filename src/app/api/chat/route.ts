@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     // Get or create session
     const session = sessionManager.getSession(sessionId);
-
+    console.log(session?.logs.length, message.length)
     console.log('--- SESSION START ---');
     console.log('Session ID:', sessionId);
     console.log('Profile:', JSON.stringify(session.profile, null, 2));
@@ -42,8 +42,9 @@ export async function POST(req: Request) {
     const p = JSON.stringify(session.profile);
     const c = session.creditResult ? `|CREDIT:${JSON.stringify(session.creditResult)}` : '';
     const l = session.selectedLoan ? `|LOAN:${JSON.stringify(session.selectedLoan)}` : '';
+    const pdf = session.pdfPath ? `|PDF:${session.pdfPath}` : '';
     const h = session.logs.join("|");
-    const systemContext = `PROFILE:${p}${c}${l}\nHISTORY:${h}`;
+    const systemContext = `PROFILE:${p}${c}${l}${pdf}\nHISTORY:${h}`;
 
     console.log('System Context sent to agent:', systemContext.substring(0, 200) + '...');
 
@@ -89,7 +90,6 @@ export async function POST(req: Request) {
           console.log('Updated profile from tool data:', session.profile);
         }
 
-        // Specific handling for credit results
         if (tName === 'calculateFOIR' && toolRes) {
           session.creditResult = {
             foir: toolRes.foir ?? 0,
@@ -97,11 +97,17 @@ export async function POST(req: Request) {
             eligible: toolRes.eligible,
             explanation: toolRes.explanation || ''
           };
-          console.log('Updated credit result:', session.creditResult);
+          session.stage = 'credit';
+          console.log('Updated credit result and stage:', session.creditResult);
+        }
+
+        if (tName === 'getAvailableLoans') {
+          session.stage = 'loan_selection';
         }
 
         if (tName === 'generateLoanPDF' && toolRes && toolRes.pdfPath) {
           session.pdfPath = toolRes.pdfPath;
+          session.stage = 'done';
         }
 
         console.log(`Tool Result ${i} raw:`, JSON.stringify(tr, null, 2));

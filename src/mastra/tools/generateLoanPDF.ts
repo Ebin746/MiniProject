@@ -122,9 +122,9 @@ export const generateLoanPDF = createTool({
 
             return {
                 success: true,
-                pdfPath: `public/pdfs/${filename}`,
+                pdfPath: `/pdfs/${filename}`,
                 filename: filename,
-                message: 'PDF generated successfully'
+                message: `PDF generated successfully! [Download Loan Confirmation PDF](/pdfs/${filename})`
             };
 
         } catch (error) {
