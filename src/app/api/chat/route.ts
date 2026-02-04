@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     // Get or create session
     const session = sessionManager.getSession(sessionId);
-
+    console.log(session?.logs.length, message.length)
     console.log('--- SESSION START ---');
     console.log('Session ID:', sessionId);
     console.log('Profile:', JSON.stringify(session.profile, null, 2));
@@ -42,8 +42,9 @@ export async function POST(req: Request) {
     const p = JSON.stringify(session.profile);
     const c = session.creditResult ? `|CREDIT:${JSON.stringify(session.creditResult)}` : '';
     const l = session.selectedLoan ? `|LOAN:${JSON.stringify(session.selectedLoan)}` : '';
+    const pdf = session.pdfPath ? `|PDF:${session.pdfPath}` : '';
     const h = session.logs.join("|");
-    const systemContext = `PROFILE:${p}${c}${l}\nHISTORY:${h}`;
+    const systemContext = `PROFILE:${p}${c}${l}${pdf}\nHISTORY:${h}`;
 
     console.log('System Context sent to agent:', systemContext.substring(0, 200) + '...');
 
@@ -62,24 +63,67 @@ export async function POST(req: Request) {
     console.log('Agent text result:', result.text);
 
     // Better tool result logging
-    if (result.toolResults) {
+    if (result.toolResults && result.toolResults.length > 0) {
       console.log('Tool results found:', result.toolResults.length);
+
       result.toolResults.forEach((tr: any, i) => {
         const tName = tr.toolName || tr.name || 'unknown';
-        console.log(`Tool Result ${i} raw:`, JSON.stringify(tr, null, 2));
-        console.log(`Tool Result ${i} (${tName}):`, {
-          resultType: typeof tr.result,
-          resultPreview: typeof tr.result === 'string' ? tr.result.substring(0, 200) : 'object'
+        const payload = tr.payload || tr;
+        const toolRes = payload.result || tr.result;
+        const toolArgs = payload.args || tr.args;
+
+        console.log(`Processing tool: ${tName}`);
+
+        // Extract profile data from BOTH args and result (very important for persistence)
+        const profileSource = { ...toolArgs, ...(typeof toolRes === 'object' ? toolRes : {}) };
+        const potentialFields = ['name', 'income', 'employment', 'existing_emi'];
+        const extractedData: any = {};
+
+        potentialFields.forEach(field => {
+          if (profileSource[field] !== undefined && profileSource[field] !== null && profileSource[field] !== "") {
+            extractedData[field] = profileSource[field];
+          }
         });
+
+        if (Object.keys(extractedData).length > 0) {
+          session.profile = { ...session.profile, ...extractedData };
+          console.log('Updated profile from tool data:', session.profile);
+        }
+
+        if (tName === 'calculateFOIR' && toolRes) {
+          session.creditResult = {
+            foir: toolRes.foir ?? 0,
+            risk: toolRes.risk ?? 'MEDIUM',
+            eligible: toolRes.eligible,
+            explanation: toolRes.explanation || ''
+          };
+          session.stage = 'credit';
+          console.log('Updated credit result and stage:', session.creditResult);
+        }
+
+        if (tName === 'getAvailableLoans') {
+          session.stage = 'loan_selection';
+        }
+
+        if (tName === 'generateLoanPDF' && toolRes && toolRes.pdfPath) {
+          session.pdfPath = toolRes.pdfPath;
+          session.stage = 'done';
+        }
+
+        console.log(`Tool Result ${i} raw:`, JSON.stringify(tr, null, 2));
       });
     }
 
     let reply = result.text || "";
 
+    // Fallback if agent returns empty response but has tool results
+    if (!reply && result.toolResults && result.toolResults.length > 0) {
+      const last = result.toolResults[result.toolResults.length - 1] as any;
+      const res = last.payload?.result || last.result;
+      reply = typeof res === 'string' ? res : (res?.explanation || res?.message || "Processed.");
+    }
 
-
-    // Process tool results for specific state updates (Mastra internal sync)
-
+    if (!reply) reply = "I've processed your request.";
 
     // Save assistant reply
     session.logs.push(`Assistant: ${reply}`);
@@ -93,8 +137,6 @@ export async function POST(req: Request) {
 
     console.log('--- SESSION END ---');
     console.log('Updated Profile:', JSON.stringify(session.profile, null, 2));
-    console.log('Updated Loan:', JSON.stringify(session.selectedLoan, null, 2));
-    console.log('-------------------');
 
     return NextResponse.json({
       response: reply,

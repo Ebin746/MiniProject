@@ -1,4 +1,5 @@
 'use client';
+import ReactMarkdown from 'react-markdown';
 
 import { useState, useEffect, useRef } from 'react';
 
@@ -72,6 +73,11 @@ export default function Home() {
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : 'bg-indigo-500'} animate-pulse`} />
               Stage: {stage}
+              {pdfPath && (
+                <a href={pdfPath} target="_blank" rel="noopener noreferrer" className="ml-2 text-indigo-400 hover:text-indigo-300 underline">
+                  View PDF
+                </a>
+              )}
             </p>
           </div>
         </div>
@@ -106,7 +112,22 @@ export default function Home() {
                 : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
                 }`}
             >
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              <div className="whitespace-pre-wrap max-w-none">
+                <ReactMarkdown
+                  components={{
+                    a: ({ node, ...props }) => (
+                      <a
+                        {...props}
+                        className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      />
+                    ),
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}
