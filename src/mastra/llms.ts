@@ -1,4 +1,7 @@
-export const PRIMARY_MODEL = 'groq/qwen/qwen3-32b';
+export const PRIMARY_MODEL = 'groq/llama-3.3-70b-versatile';
+
+
+
 
 /**
  * Groq Rate Limits (Developer Tier):
