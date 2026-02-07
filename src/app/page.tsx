@@ -1,7 +1,8 @@
 'use client';
 import ReactMarkdown from 'react-markdown';
-
 import { useState, useEffect, useRef } from 'react';
+import LoginSignup from '@/components/LoginSignup';
+import { LogOut, User as UserIcon } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -9,6 +10,8 @@ interface Message {
 }
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [sessionId, setSessionId] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,8 +21,32 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    checkAuth();
     setSessionId(`session_${Math.random().toString(36).substring(7)}`);
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setAuthChecking(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,6 +87,18 @@ export default function Home() {
     }
   };
 
+  if (authChecking) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-zinc-50 dark:bg-zinc-950">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginSignup onAuthSuccess={(userData) => setUser(userData)} />;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
       {/* Header */}
@@ -69,7 +108,14 @@ export default function Home() {
             A
           </div>
           <div>
-            <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
+              <span className="text-zinc-300 dark:text-zinc-700">|</span>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                <UserIcon size={12} />
+                <span>{user.name}</span>
+              </div>
+            </div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : 'bg-indigo-500'} animate-pulse`} />
               Stage: {stage}
@@ -81,8 +127,17 @@ export default function Home() {
             </p>
           </div>
         </div>
-        <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
-          ID: {sessionId}
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
+            ID: {sessionId}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+            title="Logout"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </header>
 
@@ -94,9 +149,9 @@ export default function Home() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">👋</div>
-            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello! I'm your Loan Assistant.</h2>
+            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {user.name.split(' ')[0]}!</h2>
             <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-              I can help you check your loan eligibility in minutes. Let's start with your basic details.
+              I'm your Loan Assistant. I can help you check your loan eligibility in minutes. Let's start with your basic details.
             </p>
           </div>
         )}
