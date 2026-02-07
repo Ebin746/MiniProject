@@ -1,7 +1,8 @@
 'use client';
 import ReactMarkdown from 'react-markdown';
-
 import { useState, useEffect, useRef } from 'react';
+import LoginSignup from '@/components/LoginSignup';
+import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -9,17 +10,45 @@ interface Message {
 }
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [sessionId, setSessionId] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [stage, setStage] = useState<'sales' | 'credit' | 'done'>('sales');
   const [pdfPath, setPdfPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    checkAuth();
     setSessionId(`session_${Math.random().toString(36).substring(7)}`);
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setAuthChecking(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -27,11 +56,11 @@ export default function Home() {
     }
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async (overrideMessage?: string) => {
+    const userMessage = overrideMessage || input.trim();
+    if (!userMessage || loading) return;
 
-    const userMessage = input.trim();
-    setInput('');
+    if (!overrideMessage) setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
 
@@ -60,6 +89,50 @@ export default function Home() {
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      // 1. Send to OCR Upload API
+      const res = await fetch('/api/ocr/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.text) {
+        // 2. Send extracted text to chat
+        sendMessage(`EXTRACTED_KYC_DATA: ${data.text}`);
+      } else {
+        alert('OCR failed to extract text. Please try or type manually.');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      alert('Error uploading file.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  if (authChecking) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-zinc-50 dark:bg-zinc-950">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginSignup onAuthSuccess={(userData) => setUser(userData)} />;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
       {/* Header */}
@@ -69,7 +142,14 @@ export default function Home() {
             A
           </div>
           <div>
-            <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
+              <span className="text-zinc-300 dark:text-zinc-700">|</span>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                <UserIcon size={12} />
+                <span>{user.name}</span>
+              </div>
+            </div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : 'bg-indigo-500'} animate-pulse`} />
               Stage: {stage}
@@ -81,8 +161,17 @@ export default function Home() {
             </p>
           </div>
         </div>
-        <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
-          ID: {sessionId}
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
+            ID: {sessionId}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+            title="Logout"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </header>
 
@@ -94,9 +183,9 @@ export default function Home() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">👋</div>
-            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello! I'm your Loan Assistant.</h2>
+            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {user.name.split(' ')[0]}!</h2>
             <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-              I can help you check your loan eligibility in minutes. Let's start with your basic details.
+              I'm your Loan Assistant. I can help you check your loan eligibility in minutes. Let's start with your basic details.
             </p>
           </div>
         )}
@@ -147,6 +236,21 @@ export default function Home() {
       <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
         <div className="max-w-4xl mx-auto flex gap-3 relative">
           <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileUpload}
+          />
+          <button
+            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || loading}
+            title="Upload ID Document"
+          >
+            {uploading ? <Loader2 className="animate-spin" size={20} /> : <ImagePlus size={20} />}
+          </button>
+          <input
             className="flex-1 px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm transition-all"
             placeholder="Type your message..."
             value={input}
@@ -158,7 +262,7 @@ export default function Home() {
               ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
               : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
               }`}
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={loading}
           >
             Send
