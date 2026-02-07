@@ -2,7 +2,7 @@
 import ReactMarkdown from 'react-markdown';
 import { useState, useEffect, useRef } from 'react';
 import LoginSignup from '@/components/LoginSignup';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -16,9 +16,11 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [stage, setStage] = useState<'sales' | 'credit' | 'done'>('sales');
   const [pdfPath, setPdfPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -54,11 +56,11 @@ export default function Home() {
     }
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async (overrideMessage?: string) => {
+    const userMessage = overrideMessage || input.trim();
+    if (!userMessage || loading) return;
 
-    const userMessage = input.trim();
-    setInput('');
+    if (!overrideMessage) setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
 
@@ -84,6 +86,38 @@ export default function Home() {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      // 1. Send to OCR Upload API
+      const res = await fetch('/api/ocr/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.text) {
+        // 2. Send extracted text to chat
+        sendMessage(`EXTRACTED_KYC_DATA: ${data.text}`);
+      } else {
+        alert('OCR failed to extract text. Please try or type manually.');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      alert('Error uploading file.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -202,6 +236,21 @@ export default function Home() {
       <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
         <div className="max-w-4xl mx-auto flex gap-3 relative">
           <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileUpload}
+          />
+          <button
+            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || loading}
+            title="Upload ID Document"
+          >
+            {uploading ? <Loader2 className="animate-spin" size={20} /> : <ImagePlus size={20} />}
+          </button>
+          <input
             className="flex-1 px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm transition-all"
             placeholder="Type your message..."
             value={input}
@@ -213,7 +262,7 @@ export default function Home() {
               ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
               : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
               }`}
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={loading}
           >
             Send
