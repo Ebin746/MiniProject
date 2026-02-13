@@ -107,8 +107,8 @@ export default function Home() {
       const data = await res.json();
 
       if (data.text) {
-        // 2. Send extracted text to chat
-        sendMessage(`EXTRACTED_KYC_DATA: ${data.text}`);
+        // 2. Send extracted text to chat with unified prefix
+        sendMessage(`EXTRACTED_DOC_DATA: ${data.text}`);
       } else {
         alert('OCR failed to extract text. Please try or type manually.');
       }
@@ -243,12 +243,12 @@ export default function Home() {
             onChange={handleFileUpload}
           />
           <button
-            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center"
+            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || loading}
-            title="Upload ID Document"
+            title="Upload Document (ID or Salary Slip)"
           >
-            {uploading ? <Loader2 className="animate-spin" size={20} /> : <ImagePlus size={20} />}
+            {uploading ? <Loader2 className="animate-spin" size={20} /> : <div className="flex items-center gap-1"><ImagePlus size={20} /><span className="text-[10px] font-bold">UPLOAD DOC</span></div>}
           </button>
           <input
             className="flex-1 px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm transition-all"

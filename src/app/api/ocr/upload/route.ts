@@ -14,7 +14,13 @@ export async function POST(req: Request) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        console.log('--- Groq Vision OCR Start ---');
+        console.log('--- Groq Vision OCR Start (Unified) ---');
+
+        const prompt = `Identify the type of document and extract information as follows:
+- IF SALARY SLIP: Extract Full Name, Designation/Job Title, and Monthly Net/Gross Salary.
+- IF AADHAR CARD: Extract Full Name, 12-digit Aadhaar Number, and Date of Birth (YYYY-MM-DD).
+- IF PAN CARD: Extract Full Name and PAN Number.
+Respond with ONLY the extracted data points clearly labeled. If a field is not found, omit it.`;
 
         const { text: extractedText } = await generateText({
             model: groq('meta-llama/llama-4-scout-17b-16e-instruct'),
@@ -24,7 +30,7 @@ export async function POST(req: Request) {
                     content: [
                         {
                             type: 'text',
-                            text: 'Extract the Full Name, 12-digit Aadhaar Number, and Date of Birth (in YYYY-MM-DD format) from this identity document. If it is a PAN card, extract the PAN number instead. Respond with ONLY the extracted data points clearly labeled.'
+                            text: prompt
                         },
                         {
                             type: 'image',
