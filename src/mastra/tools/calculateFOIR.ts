@@ -6,10 +6,11 @@ export const calculateFOIR = createTool({
     description: 'Calculate the Fixed Obligation to Income Ratio (FOIR).',
     inputSchema: z.object({
         income: z.union([z.number(), z.string()]).describe('Monthly income'),
-        existing_emi: z.union([z.number(), z.string()]).describe('Total monthly EMIs'),
+        existing_emi: z.union([z.number(), z.string()]).optional().describe('Total monthly EMIs (defaults to 0)'),
     }),
     execute: async ({ context }) => {
-        const parseValue = (val: number | string): number => {
+        const parseValue = (val: number | string | undefined): number => {
+            if (val === undefined) return 0;
             if (typeof val === 'number') return val;
             const normalized = val.toLowerCase().trim();
             if (normalized.endsWith('k')) return parseFloat(normalized.slice(0, -1)) * 1000;

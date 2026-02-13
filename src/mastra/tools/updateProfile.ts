@@ -8,7 +8,6 @@ export const updateProfile = createTool({
         name: z.string().describe('Full name. Pass ONLY if provided.'),
         income: z.union([z.number(), z.string()]).describe('Monthly income. Pass ONLY if provided.'),
         employment: z.string().describe('Employment type. Pass ONLY if provided.'),
-        existing_emi: z.union([z.number(), z.string()]).describe('Existing EMIs. Pass ONLY if provided.'),
     }).partial(), // Keep as partial so agent can pass only what it has
     execute: async ({ context }) => {
         return {
