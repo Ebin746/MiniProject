@@ -17,5 +17,6 @@ export const masterAgent = new Agent({
   },
   defaultGenerateOptions: {
     maxSteps: 10,
+    temperature: 0.3,
   }
 });

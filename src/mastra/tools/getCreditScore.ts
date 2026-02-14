@@ -24,6 +24,7 @@ export const getCreditScore = createTool({
                 return {
                     success: true,
                     score: record.score,
+                    emi: record.emi || 0,
                     message: `Credit score for PAN ${pan.toUpperCase()} is ${record.score}.`
                 };
             } else {
