@@ -11,14 +11,15 @@ export const verifyKYC = createTool({
         dob: z.string().describe('Date of birth in YYYY-MM-DD format'),
     }),
     execute: async ({ context }) => {
-        const { aadhar_no, dob } = context;
+        const aadhar_no = context.aadhar_no.replace(/\s/g, '');
+        const dob = context.dob.trim();
 
         try {
             const kycDataPath = path.join(process.cwd(), 'src', 'mastra', 'data', 'kyc.json');
             const kycData = JSON.parse(fs.readFileSync(kycDataPath, 'utf8'));
 
             const record = kycData.find(
-                (entry: any) => entry.aadhar_no === aadhar_no && entry.dob === dob
+                (entry: any) => entry.aadhar_no.replace(/\s/g, '') === aadhar_no && entry.dob.trim() === dob
             );
 
             if (record) {

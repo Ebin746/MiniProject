@@ -154,7 +154,12 @@ export default function Home() {
               <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : 'bg-indigo-500'} animate-pulse`} />
               Stage: {stage}
               {pdfPath && (
-                <a href={pdfPath} target="_blank" rel="noopener noreferrer" className="ml-2 text-indigo-400 hover:text-indigo-300 underline">
+                <a
+                  href={pdfPath.startsWith('/pdfs/') ? `${typeof window !== 'undefined' ? window.location.origin : ''}${pdfPath}` : pdfPath}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-indigo-400 hover:text-indigo-300 underline"
+                >
                   View PDF
                 </a>
               )}
@@ -204,14 +209,23 @@ export default function Home() {
               <div className="whitespace-pre-wrap max-w-none">
                 <ReactMarkdown
                   components={{
-                    a: ({ node, ...props }) => (
-                      <a
-                        {...props}
-                        className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      />
-                    ),
+                    a: ({ node, ...props }) => {
+                      // Auto-prepend base URL for relative PDF links
+                      const href = props.href || '';
+                      const fullHref = href.startsWith('/pdfs/')
+                        ? `${window.location.origin}${href}`
+                        : href;
+
+                      return (
+                        <a
+                          {...props}
+                          href={fullHref}
+                          className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      );
+                    },
                   }}
                 >
                   {msg.content}

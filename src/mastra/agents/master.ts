@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core';
 import { MASTER_AGENT_PROMPT } from '../prompts/master';
-import { getAvailableLoans, generateLoanPDF, updateProfile, calculateFOIR, verifyKYC } from '../tools';
+import { getAvailableLoans, generateLoanPDF, updateProfile, calculateFOIR, verifyKYC, getCreditScore } from '../tools';
 import { PRIMARY_MODEL } from '../llms';
 
 export const masterAgent = new Agent({
@@ -12,9 +12,11 @@ export const masterAgent = new Agent({
     generateLoanPDF,
     updateProfile,
     calculateFOIR,
-    verifyKYC
+    verifyKYC,
+    getCreditScore
   },
   defaultGenerateOptions: {
     maxSteps: 10,
+    temperature: 0.3,
   }
 });

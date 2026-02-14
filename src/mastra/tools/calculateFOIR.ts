@@ -7,6 +7,7 @@ export const calculateFOIR = createTool({
     inputSchema: z.object({
         income: z.union([z.number(), z.string()]).describe('Monthly income'),
         existing_emi: z.union([z.number(), z.string()]).optional().describe('Total monthly EMIs (defaults to 0)'),
+        creditScore: z.union([z.number(), z.string()]).optional().describe('User credit score (from PAN)'),
     }),
     execute: async ({ context }) => {
         const parseValue = (val: number | string | undefined): number => {
@@ -20,21 +21,29 @@ export const calculateFOIR = createTool({
 
         const income = parseValue(context.income);
         const existing_emi = parseValue(context.existing_emi);
+        const creditScore = context.creditScore !== undefined ? parseValue(context.creditScore) : 700;
 
         if (isNaN(income) || income === 0) return { foir: 0, error: "Invalid or zero income" };
         if (isNaN(existing_emi)) return { foir: 0, error: "Invalid EMI value" };
+        if (isNaN(creditScore)) return { foir: 0, error: "Invalid credit score" };
 
         const foir = (existing_emi / income) * 100;
-        const eligible = foir <= 50;
-        const risk = foir > 40 ? 'HIGH' : foir > 20 ? 'MEDIUM' : 'LOW';
+        const eligible = foir <= 50 && creditScore >= 600;
+        const risk = foir > 40 || creditScore < 650 ? 'HIGH' : foir > 20 || creditScore < 700 ? 'MEDIUM' : 'LOW';
+
+        let explanation = eligible
+            ? `Your FOIR is ${foir.toFixed(2)}% and credit score is ${creditScore}. You are eligible!`
+            : `Unfortunately, you are not eligible. `;
+
+        if (foir > 50) explanation += `Your FOIR of ${foir.toFixed(2)}% exceeds the 50% limit. `;
+        if (creditScore < 600) explanation += `Your credit score of ${creditScore} is below the required 600. `;
 
         return {
             foir: parseFloat(foir.toFixed(2)),
+            creditScore,
             risk,
             eligible,
-            explanation: eligible
-                ? `Your FOIR is ${foir.toFixed(2)}%, which is within our limit of 50%. You are eligible!`
-                : `Your FOIR is ${foir.toFixed(2)}%, which exceeds our limit of 50%. Unfortunately, you are not eligible.`
+            explanation
         };
     }
 });
