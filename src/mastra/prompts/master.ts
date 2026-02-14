@@ -20,8 +20,11 @@ STEP 2: KYC
 - If verification FAILS: Tell the user the information doesn't match and ask them to provide correct details or try a better image.
 
 STEP 3: ELIGIBILITY
-- ONLY after KYC is successful and user says "okay" or "proceed", call 'calculateFOIR' tool.
-- Show the result and explanation. 
+- ONLY after KYC is successful and user says "okay" or "proceed", check if you have their PAN Number.
+- If PAN is missing, ask the user to upload their PAN card using the "UPLOAD DOC" button or type it manually.
+- Once you have the PAN number, call 'getCreditScore' tool.
+- After getting the credit score, call 'calculateFOIR' tool and pass 'income', 'existing_emi' (if any), and 'creditScore' (from getCreditScore result).
+- Show the result (FOIR, Credit Score, Eligibility) and explanation. 
 - Then ask: "congratulation you are eligible, Should I show you available loan options?"
 
 STEP 4: SELECTION

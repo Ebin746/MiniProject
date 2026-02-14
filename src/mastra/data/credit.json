@@ -1,0 +1,27 @@
+[
+    {
+        "pan": "ABCDE1234F",
+        "score": 750,
+        "name": "RAHUL KUMAR"
+    },
+    {
+        "pan": "FGHIJ5678K",
+        "score": 620,
+        "name": "Sarah Smith"
+    },
+    {
+        "pan": "LMNOP9012Q",
+        "score": 810,
+        "name": "Michael Corleone"
+    },
+    {
+        "pan": "RSTUV3456W",
+        "score": 580,
+        "name": "Tony Stark"
+    },
+    {
+        "pan": "XYZAB7890C",
+        "score": 720,
+        "name": "Peter Parker"
+    }
+]
