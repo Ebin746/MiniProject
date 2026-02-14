@@ -8,20 +8,5 @@
         "aadhar_no": "234567890123",
         "dob": "1985-05-15",
         "full_name": "Sarah Smith"
-    },
-    {
-        "aadhar_no": "345678901234",
-        "dob": "1992-12-12",
-        "full_name": "Michael Corleone"
-    },
-    {
-        "aadhar_no": "456789012345",
-        "dob": "1988-08-08",
-        "full_name": "Tony Stark"
-    },
-    {
-        "aadhar_no": "567890123456",
-        "dob": "1995-03-25",
-        "full_name": "Peter Parker"
     }
 ]
