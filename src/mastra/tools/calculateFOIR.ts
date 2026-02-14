@@ -7,10 +7,9 @@ export const calculateFOIR = createTool({
     inputSchema: z.object({
         income: z.union([z.number(), z.string()]).describe('Monthly income'),
         existing_emi: z.union([z.number(), z.string()]).optional().describe('Total monthly EMIs (defaults to 0)'),
-        creditScore: z.number().optional().describe('User credit score (from PAN)'),
+        creditScore: z.union([z.number(), z.string()]).optional().describe('User credit score (from PAN)'),
     }),
     execute: async ({ context }) => {
-        const { creditScore = 700 } = context;
         const parseValue = (val: number | string | undefined): number => {
             if (val === undefined) return 0;
             if (typeof val === 'number') return val;
@@ -22,9 +21,11 @@ export const calculateFOIR = createTool({
 
         const income = parseValue(context.income);
         const existing_emi = parseValue(context.existing_emi);
+        const creditScore = context.creditScore !== undefined ? parseValue(context.creditScore) : 700;
 
         if (isNaN(income) || income === 0) return { foir: 0, error: "Invalid or zero income" };
         if (isNaN(existing_emi)) return { foir: 0, error: "Invalid EMI value" };
+        if (isNaN(creditScore)) return { foir: 0, error: "Invalid credit score" };
 
         const foir = (existing_emi / income) * 100;
         const eligible = foir <= 50 && creditScore >= 600;

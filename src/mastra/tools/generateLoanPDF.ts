@@ -74,8 +74,8 @@ export const generateLoanPDF = createTool({
                 .fillColor('#34495e')
                 .text(`Name: ${name}`)
                 .text(`Employment: ${employment}`)
-                .text(`Monthly Income: ₹${income.toLocaleString('en-IN')}`)
-                .text(`Existing EMI: ₹${existing_emi.toLocaleString('en-IN')}`)
+                .text(`Monthly Income: Rs.${income.toLocaleString('en-IN')}`)
+                .text(`Existing EMI: Rs.${existing_emi.toLocaleString('en-IN')}`)
                 .moveDown(2);
 
             // Loan Details Section
@@ -87,7 +87,7 @@ export const generateLoanPDF = createTool({
             doc.fontSize(12)
                 .fillColor('#34495e')
                 .text(`Loan Type: ${loanName}`)
-                .text(`Loan Amount: ₹${loanAmount.toLocaleString('en-IN')}`)
+                .text(`Loan Amount: Rs.${loanAmount.toLocaleString('en-IN')}`)
                 .text(`Tenure: ${loanTenure} months`)
                 .text(`Interest Rate: ${interestRate}% per annum`)
                 .moveDown(2);
@@ -100,7 +100,7 @@ export const generateLoanPDF = createTool({
             doc.fontSize(14)
                 .fillColor('#27ae60')
                 .font('Helvetica-Bold')
-                .text(`Monthly EMI: ₹${Math.round(emi).toLocaleString('en-IN')}`)
+                .text(`Monthly EMI: Rs.${Math.round(emi).toLocaleString('en-IN')}`)
                 .font('Helvetica')
                 .moveDown(2);
 
@@ -120,11 +120,19 @@ export const generateLoanPDF = createTool({
                 stream.on('error', reject);
             });
 
+            // Generate full URL based on environment
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                (process.env.NODE_ENV === 'production'
+                    ? 'https://yourdomain.com'
+                    : 'http://localhost:3000');
+            const fullPdfUrl = `${baseUrl}/pdfs/${filename}`;
+
             return {
                 success: true,
                 pdfPath: `/pdfs/${filename}`,
+                fullUrl: fullPdfUrl,
                 filename: filename,
-                message: `PDF generated successfully! [Download Loan Confirmation PDF](/pdfs/${filename})`
+                message: `PDF generated successfully! [Download Loan Confirmation PDF](${fullPdfUrl})`
             };
 
         } catch (error) {
