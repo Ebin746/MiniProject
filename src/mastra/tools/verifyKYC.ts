@@ -25,19 +25,22 @@ export const verifyKYC = createTool({
             if (record) {
                 return {
                     success: true,
+                    kycFailed: false,
                     message: 'KYC verified successfully.',
                     full_name: record.full_name
                 };
             } else {
                 return {
                     success: false,
-                    message: 'KYC verification failed. Information does not match our records.'
+                    kycFailed: true,
+                    message: 'KYC verification failed. The Aadhaar details provided do not match our records.'
                 };
             }
         } catch (error) {
             console.error('KYC Verification Error:', error);
             return {
                 success: false,
+                kycFailed: true,
                 message: 'Error accessing KYC database.'
             };
         }

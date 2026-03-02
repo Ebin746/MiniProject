@@ -21,16 +21,28 @@ export const getCreditScore = createTool({
             );
 
             if (record) {
+                const creditScoreLow = record.score < 600;
+                const scoreCategory =
+                    record.score >= 750 ? 'EXCELLENT' :
+                        record.score >= 700 ? 'GOOD' :
+                            record.score >= 650 ? 'FAIR' :
+                                record.score >= 600 ? 'POOR' : 'VERY LOW';
                 return {
                     success: true,
+                    creditScoreLow,
+                    scoreCategory,
                     score: record.score,
                     emi: record.emi || 0,
-                    message: `Credit score for PAN ${pan.toUpperCase()} is ${record.score}.`
+                    message: creditScoreLow
+                        ? `Credit score for PAN ${pan.toUpperCase()} is ${record.score}, which is very low.`
+                        : `Credit score for PAN ${pan.toUpperCase()} is ${record.score}.`
                 };
             } else {
                 return {
                     success: false,
-                    message: `No credit record found for PAN ${pan.toUpperCase()}. Assuming a default score of 300.`
+                    creditScoreLow: true,
+                    scoreCategory: 'UNKNOWN',
+                    message: `No credit record found for PAN ${pan.toUpperCase()}. Cannot proceed without a valid credit record.`
                 };
             }
         } catch (error) {
