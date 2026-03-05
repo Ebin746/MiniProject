@@ -22,10 +22,16 @@ export interface SelectedLoan {
   interestRate: number;
 }
 
+export interface KycResult {
+  verified: boolean;
+  message: string;
+}
+
 export interface SessionData {
   sessionId: string;
-  stage: 'sales' | 'credit' | 'loan_selection' | 'docs' | 'done';
+  stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
   profile: UserProfile;
+  kycResult?: KycResult;
   creditResult?: CreditResult;
   selectedLoan?: SelectedLoan;
   pdfPath?: string;
