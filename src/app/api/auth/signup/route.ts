@@ -5,7 +5,9 @@ import { signJWT } from '@/lib/auth';
 
 export async function POST(req: Request) {
     try {
+        console.log('Attempting to connect to database for signup...');
         await dbConnect();
+        console.log('Successfully connected to database for signup');
 
         const { name, email, password } = await req.json();
 

@@ -1,40 +1,26 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+// Configure DNS to use Google's public DNS servers to bypass institutional blocking
+dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
-if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env');
-}
+// Use environment variable if available, otherwise fallback to the URL provided
+const URL = process.env.MONGODB_URI || "mongodb+srv://deonnjr10_db_user:minipro@cluster0.ld9i5zc.mongodb.net/mini_project_db?retryWrites=true&w=majority";
 
-let cached = (global as any).mongoose;
-
-if (!cached) {
-    cached = (global as any).mongoose = { conn: null, promise: null };
-}
-
-async function dbConnect() {
-    if (cached.conn) {
-        return cached.conn;
-    }
-
-    if (!cached.promise) {
-        const opts = {
-            bufferCommands: false,
-        };
-
-        cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-            return mongoose;
-        });
+const dbConnect = async () => {
+    // Check if we have a connection to the database or if it's currently
+    // connecting or disconnecting (readyState 1, 2 and 3)
+    if (mongoose.connection.readyState >= 1) {
+        return;
     }
 
     try {
-        cached.conn = await cached.promise;
-    } catch (e) {
-        cached.promise = null;
-        throw e;
+        await mongoose.connect(URL);
+        console.log("MongoDB Connected Successfully");
+    } catch (error) {
+        console.error("MongoDB Connection Failed:", error);
+        throw error;
     }
-
-    return cached.conn;
-}
+};
 
 export default dbConnect;

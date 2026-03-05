@@ -1,0 +1,30 @@
+{
+  "error": null,
+  "dbs": [
+    {
+      "database": "mini",
+      "collections": [
+        "test"
+      ]
+    },
+    {
+      "database": "mini_project_db",
+      "collections": [
+        "samples",
+        "kycs",
+        "credits",
+        "loans"
+      ]
+    },
+    {
+      "database": "admin",
+      "collections": []
+    },
+    {
+      "database": "local",
+      "collections": [
+        "oplog.rs"
+      ]
+    }
+  ]
+}
