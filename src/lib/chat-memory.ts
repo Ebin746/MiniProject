@@ -1,6 +1,6 @@
 import { SessionData } from './session-manager';
 
-const MAX_LOG_ENTRIES = 4;
+const MAX_LOG_ENTRIES = 8;
 
 /**
  * Appends a message to the session log and trims it to the last MAX_LOG_ENTRIES entries.
@@ -18,12 +18,14 @@ export function appendLog(session: SessionData, message: string): void {
  * session state and recent conversation history.
  */
 export function buildSystemContext(session: SessionData): string {
+    const stage = `STAGE:${session.stage}`;
     const p = JSON.stringify(session.profile);
+    const kyc = session.kycResult ? `|KYC:${JSON.stringify(session.kycResult)}` : '';
     const c = session.creditResult ? `|CREDIT:${JSON.stringify(session.creditResult)}` : '';
     const l = session.selectedLoan ? `|LOAN:${JSON.stringify(session.selectedLoan)}` : '';
     const pdf = session.pdfPath ? `|PDF:${session.pdfPath}` : '';
     const h = session.logs.join('|');
-    return `PROFILE:${p}${c}${l}${pdf}\nHISTORY:${h}`;
+    return `${stage}|PROFILE:${p}${kyc}${c}${l}${pdf}\nHISTORY:${h}`;
 }
 
 /**
@@ -33,10 +35,11 @@ export function buildSystemContext(session: SessionData): string {
  */
 export function processToolResults(session: SessionData, toolResults: any[]): void {
     toolResults.forEach((tr: any, i) => {
-        const tName = tr.toolName || tr.name || 'unknown';
+        // Mastra wraps tool results as { type, payload: { toolName, args, result } }
         const payload = tr.payload || tr;
-        const toolRes = payload.result || tr.result;
-        const toolArgs = payload.args || tr.args;
+        const tName = payload.toolName || tr.toolName || tr.name || 'unknown';
+        const toolRes = payload.result ?? tr.result;
+        const toolArgs = payload.args ?? tr.args;
 
         console.log(`Processing tool [${i}]: ${tName}`);
 
@@ -58,6 +61,38 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
             console.log('Updated profile:', session.profile);
         }
 
+        // --- updateProfile: advance to kyc stage ---
+        if (tName === 'updateProfile' && session.stage === 'sales') {
+            session.stage = 'kyc';
+            console.log('Stage updated to: kyc');
+        }
+
+        // --- verifyKYC: store result and advance stage ---
+        if (tName === 'verifyKYC' && toolRes) {
+            const verified = toolRes.kycFailed === false;
+            session.kycResult = {
+                verified,
+                message: toolRes.message || '',
+            };
+            if (verified) {
+                session.stage = 'credit';
+                console.log('KYC verified — stage updated to: credit');
+            } else {
+                session.stage = 'done';
+                console.log('KYC failed — stage updated to: done');
+            }
+            console.log('Updated kycResult:', session.kycResult);
+        }
+
+        // --- getCreditScore: end on low score ---
+        if (tName === 'getCreditScore' && toolRes) {
+            if (toolRes.creditScoreLow) {
+                session.stage = 'done';
+                console.log('Credit score too low — stage updated to: done');
+            }
+            console.log('Credit score processed:', toolRes.score, toolRes.scoreCategory);
+        }
+
         // --- FOIR / credit result ---
         if (tName === 'calculateFOIR' && toolRes) {
             session.creditResult = {
@@ -73,12 +108,14 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
         // --- Loan selection ---
         if (tName === 'getAvailableLoans') {
             session.stage = 'loan_selection';
+            console.log('Stage updated to: loan_selection');
         }
 
         // --- PDF generated ---
         if (tName === 'generateLoanPDF' && toolRes?.pdfPath) {
             session.pdfPath = toolRes.pdfPath;
             session.stage = 'done';
+            console.log('PDF generated — stage updated to: done');
         }
 
         console.log(`Tool Result [${i}] raw:`, JSON.stringify(tr, null, 2));

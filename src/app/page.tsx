@@ -17,7 +17,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [stage, setStage] = useState<'sales' | 'credit' | 'done'>('sales');
+  const [stage, setStage] = useState<'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done'>('sales');
   const [pdfPath, setPdfPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,7 +151,7 @@ export default function Home() {
               </div>
             </div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : 'bg-indigo-500'} animate-pulse`} />
+              <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : stage === 'kyc' || stage === 'credit' ? 'bg-amber-500' : 'bg-indigo-500'} animate-pulse`} />
               Stage: {stage}
               {pdfPath && (
                 <a
