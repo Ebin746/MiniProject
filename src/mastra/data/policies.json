@@ -1,0 +1,122 @@
+[
+  {
+    "id": "p-001",
+    "category": "eligibility",
+    "question": "What is the minimum income required to apply for a loan?",
+    "answer": "The minimum monthly income required is ₹15,000 for salaried employees and ₹20,000 for self-employed individuals."
+  },
+  {
+    "id": "p-002",
+    "category": "eligibility",
+    "question": "Who is eligible for a personal loan?",
+    "answer": "You are eligible if you are: between 21–60 years of age, a salaried employee or self-employed individual, an Indian resident, and have a minimum credit score of 600."
+  },
+  {
+    "id": "p-003",
+    "category": "eligibility",
+    "question": "Can self-employed people apply for a loan?",
+    "answer": "Yes, self-employed individuals can apply. They need a minimum monthly income of ₹20,000 and at least 2 years of business continuity."
+  },
+  {
+    "id": "p-004",
+    "category": "credit",
+    "question": "What is the minimum credit score required?",
+    "answer": "A minimum credit score of 600 is required. Scores above 750 are considered excellent and may qualify for better interest rates."
+  },
+  {
+    "id": "p-005",
+    "category": "credit",
+    "question": "How can I improve my credit score?",
+    "answer": "To improve your credit score: pay all EMIs and bills on time, reduce your credit card utilization below 30%, avoid applying for multiple loans simultaneously, and clear any overdue or defaulted payments."
+  },
+  {
+    "id": "p-006",
+    "category": "credit",
+    "question": "What is FOIR and how does it affect my loan?",
+    "answer": "FOIR (Fixed Obligation to Income Ratio) measures your existing EMI burden as a percentage of income. A FOIR below 50% is considered safe. High FOIR means your income is already committed to existing loans, which reduces your eligibility."
+  },
+  {
+    "id": "p-007",
+    "category": "documents",
+    "question": "What documents are required for a loan?",
+    "answer": "Required documents are: Aadhaar card (for KYC), PAN card (for credit check), latest salary slip or income proof, and bank statements for the last 3 months (optional for faster approval)."
+  },
+  {
+    "id": "p-008",
+    "category": "documents",
+    "question": "Is Aadhaar card mandatory?",
+    "answer": "Yes, Aadhaar card is mandatory for identity verification (KYC). Your Aadhaar number and date of birth must match our records."
+  },
+  {
+    "id": "p-009",
+    "category": "documents",
+    "question": "Why is PAN card needed?",
+    "answer": "PAN card is used to check your credit score with the credit bureau. It is mandatory for the eligibility check step."
+  },
+  {
+    "id": "p-010",
+    "category": "loan_details",
+    "question": "What is the maximum loan amount I can get?",
+    "answer": "The Standard Personal Loan offers up to ₹50,000 and the Express Personal Loan offers up to ₹20,000. The actual amount approved depends on your income and FOIR."
+  },
+  {
+    "id": "p-011",
+    "category": "loan_details",
+    "question": "What are the interest rates?",
+    "answer": "The Standard Personal Loan has an interest rate of 10.5% per annum. The Express Personal Loan has an interest rate of 12% per annum."
+  },
+  {
+    "id": "p-012",
+    "category": "loan_details",
+    "question": "What is the loan tenure or repayment period?",
+    "answer": "The Standard Personal Loan has a tenure of 36 months (3 years). The Express Personal Loan has a tenure of 12 months (1 year)."
+  },
+  {
+    "id": "p-013",
+    "category": "loan_details",
+    "question": "How is the EMI calculated?",
+    "answer": "EMI = [P × R × (1+R)^N] / [(1+R)^N – 1], where P is the principal amount, R is monthly interest rate, and N is number of months. For example, a ₹50,000 loan at 10.5% for 36 months gives an EMI of approximately ₹1,626."
+  },
+  {
+    "id": "p-014",
+    "category": "process",
+    "question": "How long does the loan approval take?",
+    "answer": "The entire process takes about 5–10 minutes through this assistant. KYC verification is instant. Credit check is instant. Loan PDF is generated immediately upon selection."
+  },
+  {
+    "id": "p-015",
+    "category": "process",
+    "question": "What happens after I select a loan?",
+    "answer": "After selecting a loan, a loan confirmation PDF is generated for you to download. This contains your loan terms, EMI schedule, and agreement details."
+  },
+  {
+    "id": "p-016",
+    "category": "process",
+    "question": "Can I apply for multiple loans at once?",
+    "answer": "No, only one active loan application is permitted at a time. Applying for multiple loans simultaneously can negatively impact your credit score."
+  },
+  {
+    "id": "p-017",
+    "category": "kyc",
+    "question": "What is KYC and why is it needed?",
+    "answer": "KYC (Know Your Customer) is a mandatory identity verification process required by RBI regulations. It verifies your identity using Aadhaar to prevent fraud and ensure regulatory compliance."
+  },
+  {
+    "id": "p-018",
+    "category": "kyc",
+    "question": "What if my KYC fails?",
+    "answer": "If KYC fails, it means the Aadhaar details you provided do not match our records. You can visit your nearest branch with your original documents for manual verification and assistance."
+  },
+  {
+    "id": "p-019",
+    "category": "repayment",
+    "question": "How do I repay the loan?",
+    "answer": "Loan repayment is done via monthly EMIs auto-debited from your registered bank account. You can also make prepayments at any time without any prepayment penalty."
+  },
+  {
+    "id": "p-020",
+    "category": "repayment",
+    "question": "Is there a prepayment penalty?",
+    "answer": "No, there is no prepayment penalty. You can close your loan early at any time without additional charges."
+  }
+]

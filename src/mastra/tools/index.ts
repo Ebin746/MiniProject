@@ -4,3 +4,4 @@ export * from './getAvailableLoans';
 export * from './updateProfile';
 export * from './verifyKYC';
 export * from './getCreditScore';
+export * from './searchLoanPolicy';

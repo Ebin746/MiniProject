@@ -15,6 +15,14 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Please provide a password'],
     },
+    ragSummaryEmbedding: {
+  type: [Number],
+  default: []
+},
+
+lastConversationSummary: {
+  type: String
+}
 }, { timestamps: true });
 
 UserSchema.pre('save', async function (this: any) {
