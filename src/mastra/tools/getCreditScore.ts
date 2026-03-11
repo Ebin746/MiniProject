@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
-import fs from 'fs';
-import path from 'path';
+import dbConnect from '../../lib/mongodb';
+import Credit from '../../models/Credit';
 
 export const getCreditScore = createTool({
     id: 'getCreditScore',
@@ -13,12 +13,10 @@ export const getCreditScore = createTool({
         const { pan } = context;
 
         try {
-            const creditDataPath = path.join(process.cwd(), 'src', 'mastra', 'data', 'credit.json');
-            const creditData = JSON.parse(fs.readFileSync(creditDataPath, 'utf8'));
-
-            const record = creditData.find(
-                (entry: any) => entry.pan.toUpperCase() === pan.toUpperCase()
-            );
+            await dbConnect();
+            const record = await Credit.findOne({
+                pan: new RegExp(`^${pan}$`, 'i')
+            });
 
             if (record) {
                 const creditScoreLow = record.score < 600;

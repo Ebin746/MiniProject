@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
-import fs from 'fs';
-import path from 'path';
+import dbConnect from '../../lib/mongodb';
+import KYC from '../../models/KYC';
 
 export const verifyKYC = createTool({
     id: 'verifyKYC',
@@ -15,12 +15,11 @@ export const verifyKYC = createTool({
         const dob = context.dob.trim();
 
         try {
-            const kycDataPath = path.join(process.cwd(), 'src', 'mastra', 'data', 'kyc.json');
-            const kycData = JSON.parse(fs.readFileSync(kycDataPath, 'utf8'));
-
-            const record = kycData.find(
-                (entry: any) => entry.aadhar_no.replace(/\s/g, '') === aadhar_no && entry.dob.trim() === dob
-            );
+            await dbConnect();
+            const record = await KYC.findOne({
+                aadhar_no: aadhar_no,
+                dob: dob
+            });
 
             if (record) {
                 return {
