@@ -3,13 +3,60 @@ import { SessionData } from './session-manager';
 const MAX_LOG_ENTRIES = 8;
 
 /**
- * Appends a message to the session log and trims it to the last MAX_LOG_ENTRIES entries.
+ * Strips noise words and caps length so log entries stay compact.
+ */
+const NOISE_WORDS = /\b(i|the|a|an|is|are|was|were|have|has|had|be|been|being|it|its|this|that|these|those|with|for|on|in|at|to|of|and|or|but|so|yet|nor|just|very|really|actually|basically|simply|quite|rather|got|get|will|would|could|should|may|might|do|does|did|please|thank|thanks|okay|ok|sure|yes|no|hi|hello|hey)\b/gi;
+
+export function compressLog(message: string): string {
+    return message
+        .replace(NOISE_WORDS, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+        .substring(0, 120);
+}
+
+/**
+ * Appends a compressed message to the session log and trims it to the last MAX_LOG_ENTRIES entries.
  */
 export function appendLog(session: SessionData, message: string): void {
-    session.logs.push(message);
+    session.logs.push(compressLog(message));
     if (session.logs.length > MAX_LOG_ENTRIES) {
         session.logs = session.logs.slice(-MAX_LOG_ENTRIES);
     }
+}
+
+/**
+ * Returns a terse state instruction for the current stage, listing what has
+ * already been collected and what the agent must NOT ask again.
+ */
+export function buildStateInstruction(session: SessionData): string {
+    const p = session.profile;
+    const collected: string[] = [];
+
+    if (p.name) collected.push(`name="${p.name}"`);
+    if (p.income) collected.push(`income=${p.income}`);
+    if (p.employment) collected.push(`employment="${p.employment}"`);
+    if (p.existing_emi !== undefined) collected.push(`existing_emi=${p.existing_emi}`);
+    if (p.aadhaar) collected.push(`aadhaar=${p.aadhaar}`);
+    if (p.dob) collected.push(`dob=${p.dob}`);
+    if (p.pan) collected.push(`pan=${p.pan}`);
+    if (session.kycResult?.verified) collected.push('KYC=verified');
+    if (session.creditResult) collected.push(`credit_eligible=${session.creditResult.eligible},foir=${session.creditResult.foir}`);
+    if (session.selectedLoan) collected.push(`loan="${session.selectedLoan.name}"`);
+
+    const alreadyHave = collected.length > 0 ? `ALREADY_COLLECTED:${collected.join(',')} ` : '';
+
+    const stageInstructions: Record<string, string> = {
+        sales:          'TASK:Collect name,income,employment. Call updateProfile when ready.',
+        kyc:            'TASK:Profile done. Collect Aadhaar+DOB and call verifyKYC. DO_NOT_ASK:name,income,employment.',
+        credit:         'TASK:KYC verified. Ask PAN, call getCreditScore then calculateFOIR. DO_NOT_ASK:Aadhaar,DOB,name,income.',
+        loan_selection: 'TASK:Eligible. Show/finalize loan via getAvailableLoans. DO_NOT_ASK:PAN,Aadhaar,DOB,name,income,employment.',
+        docs:           'TASK:Loan selected. Call generateLoanPDF. DO_NOT_ASK:any personal info.',
+        done:           'TASK:Conversation complete. Provide closing message only.',
+    };
+
+    const instruction = stageInstructions[session.stage] ?? '';
+    return `${alreadyHave}${instruction}`;
 }
 
 /**
@@ -19,13 +66,14 @@ export function appendLog(session: SessionData, message: string): void {
  */
 export function buildSystemContext(session: SessionData): string {
     const stage = `STAGE:${session.stage}`;
+    const stateInstruction = buildStateInstruction(session);
     const p = JSON.stringify(session.profile);
     const kyc = session.kycResult ? `|KYC:${JSON.stringify(session.kycResult)}` : '';
     const c = session.creditResult ? `|CREDIT:${JSON.stringify(session.creditResult)}` : '';
     const l = session.selectedLoan ? `|LOAN:${JSON.stringify(session.selectedLoan)}` : '';
     const pdf = session.pdfPath ? `|PDF:${session.pdfPath}` : '';
     const h = session.logs.join('|');
-    return `${stage}|PROFILE:${p}${kyc}${c}${l}${pdf}\nHISTORY:${h}`;
+    return `${stage}|${stateInstruction}|PROFILE:${p}${kyc}${c}${l}${pdf}\nHISTORY:${h}`;
 }
 
 /**
@@ -45,7 +93,7 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
 
         // --- Profile fields (extracted from both args and result) ---
         const profileSource = { ...toolArgs, ...(typeof toolRes === 'object' ? toolRes : {}) };
-        const profileFields = ['name', 'income', 'employment', 'existing_emi'];
+        const profileFields = ['name', 'income', 'employment', 'existing_emi', 'aadhaar', 'dob', 'pan'];
         const extracted: Record<string, any> = {};
 
         profileFields.forEach(field => {

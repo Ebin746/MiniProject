@@ -6,6 +6,9 @@ export interface UserProfile {
   income?: number;
   employment?: string;
   existing_emi?: number;
+  aadhaar?: string;
+  dob?: string;
+  pan?: string;
 }
 
 export interface CreditResult {
