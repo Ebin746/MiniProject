@@ -17,7 +17,8 @@ export const masterAgent = new Agent({
     searchLoanPolicy,
   },
   defaultGenerateOptions: {
-    maxSteps: 10,
-    temperature: 0.3,
+    maxSteps: 8,
+    maxTokens: 600,
+    temperature: 0.3
   }
 });
