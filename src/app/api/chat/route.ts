@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { masterAgent } from "@/mastra/agents/master";
 import { sessionManager } from "@/lib/session-manager";
-import { appendLog, buildSystemContext, processToolResults, resolveReply } from "@/lib/chat-memory";
+import {
+  appendShortTerm,
+  buildMessages,
+  processToolResults,
+  resolveReply,
+  updateFactualMemory,
+} from "@/lib/chat-memory";
 
 export async function POST(req: Request) {
   try {
@@ -14,44 +20,37 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── 1. Load session ──────────────────────────────────────────────────────
+    // ── 1. Load session ───────────────────────────────────────────────────
     const session = sessionManager.getSession(sessionId);
     if (!session.profile) session.profile = {};
 
-    console.log('--- SESSION START ---');
-    console.log('Session ID:', sessionId);
-    console.log('Profile:', JSON.stringify(session.profile));
-    console.log('Stage:', session.stage);
-    console.log('---------------------');
+    console.log(`[${sessionId}] stage=${session.stage} profile=${JSON.stringify(session.profile)}`);
 
-    // ── 2. Record user message ───────────────────────────────────────────────
-    appendLog(session, `User: ${message}`);
+    // ── 2. Build message array: [system + last 4 pairs + current user] ────
+    const messages = buildMessages(message, session);
+    console.log('System Prompt:', messages[0].content);
+    console.log('Short-term history length:', session.shortTermHistory.length);
 
-    // ── 3. Build context and call agent ─────────────────────────────────────
-    const systemContext = buildSystemContext(session);
-    console.log('System Context:', systemContext.substring(0, 200) + '...');
-
-    const result = await masterAgent.generate([
-      { role: "system", content: systemContext },
-      { role: "user", content: message },
-    ]);
-
+    // ── 3. Call agent ─────────────────────────────────────────────────────
+    const result = await masterAgent.generate(messages as any);
     console.log('Agent reply:', result.text);
 
-    // ── 4. Process tool results → update session ─────────────────────────────
+    // ── 4. Process tool results → update session state ────────────────────
     if (result.toolResults?.length > 0) {
       processToolResults(session, result.toolResults);
     }
 
-    // ── 5. Resolve reply text ────────────────────────────────────────────────
+    // ── 5. Sync factual memory from updated session ───────────────────────
+    updateFactualMemory(session);
+    console.log('Factual Memory:', JSON.stringify(session.factualMemory));
+
+    // ── 6. Resolve reply and record both turns in short-term history ──────
     const reply = resolveReply(result);
+    appendShortTerm(session, 'user', message);
+    appendShortTerm(session, 'assistant', reply);
 
-    // ── 6. Record assistant reply and persist ────────────────────────────────
-    appendLog(session, `Assistant: ${reply}`);
+    // ── 7. Persist ────────────────────────────────────────────────────────
     sessionManager.saveSession(session);
-
-    console.log('--- SESSION END ---');
-    console.log('Updated Profile:', JSON.stringify(session.profile));
 
     return NextResponse.json({
       response: reply,

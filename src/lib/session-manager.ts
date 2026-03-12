@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+// ── Profile ────────────────────────────────────────────────────────────────
 export interface UserProfile {
   name?: string;
   income?: number;
@@ -11,6 +12,7 @@ export interface UserProfile {
   pan?: string;
 }
 
+// ── Tool-result snapshots ──────────────────────────────────────────────────
 export interface CreditResult {
   foir: number;
   risk: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -30,6 +32,32 @@ export interface KycResult {
   message: string;
 }
 
+// ── Factual Memory — single source of truth for confirmed facts ────────────
+export interface FactualMemory {
+  stage: string;
+  // collected profile fields (only confirmed values)
+  name?: string;
+  income?: number;
+  employment?: string;
+  existing_emi?: number;
+  aadhaar?: string;       // stored as boolean flag to save space
+  dob?: string;
+  pan?: string;
+  kycVerified?: boolean;
+  creditFOIR?: number;
+  creditRisk?: string;
+  creditEligible?: boolean;
+  loanName?: string;
+  pdfPath?: string;
+}
+
+// ── Short-term chat turn ───────────────────────────────────────────────────
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// ── Session ────────────────────────────────────────────────────────────────
 export interface SessionData {
   sessionId: string;
   stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
@@ -38,9 +66,13 @@ export interface SessionData {
   creditResult?: CreditResult;
   selectedLoan?: SelectedLoan;
   pdfPath?: string;
-  logs: string[];
+  /** Confirmed facts — rebuilt after every tool call. Replaces old log blobs. */
+  factualMemory: FactualMemory;
+  /** Last 4 user/assistant pairs (8 entries max). Proper chat turns. */
+  shortTermHistory: ChatTurn[];
 }
 
+// ── Manager ────────────────────────────────────────────────────────────────
 class SessionManager {
   private sessions: Map<string, SessionData> = new Map();
   private sessionsDir = path.join(process.cwd(), 'sessions');
@@ -57,7 +89,8 @@ class SessionManager {
         sessionId,
         stage: 'sales',
         profile: {},
-        logs: [],
+        factualMemory: { stage: 'sales' },
+        shortTermHistory: [],
       };
       this.sessions.set(sessionId, newSession);
     }

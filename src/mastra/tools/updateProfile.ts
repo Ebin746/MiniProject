@@ -3,21 +3,20 @@ import { z } from 'zod';
 
 export const updateProfile = createTool({
     id: 'updateProfile',
-    description: 'Update the user profile with provided data. Only pass fields that have actual values.',
+    description: 'Update the user profile with any confirmed user details. Only pass fields that have actual values.',
     inputSchema: z.object({
-        name: z.string().nullable().optional().describe('Full name. Pass ONLY if provided.'),
-        income: z.union([z.number(), z.string()]).nullable().optional().describe('Monthly income. Pass ONLY if provided.'),
-        employment: z.string().nullable().optional().describe('Employment type. Pass ONLY if provided.'),
+        name:         z.string().nullable().optional().describe('Full name.'),
+        income:       z.union([z.number(), z.string()]).nullable().optional().describe('Monthly income.'),
+        employment:   z.string().nullable().optional().describe('Employment type (salaried/self-employed/business).'),
+        existing_emi: z.number().nullable().optional().describe('Existing monthly EMI obligations.'),
+        aadhaar:      z.string().nullable().optional().describe('12-digit Aadhaar number.'),
+        dob:          z.string().nullable().optional().describe('Date of birth (DD/MM/YYYY).'),
+        pan:          z.string().nullable().optional().describe('10-character PAN number.'),
     }),
     execute: async ({ context }) => {
-        // Filter out null and undefined values
-        const filteredContext = Object.fromEntries(
-            Object.entries(context).filter(([_, value]) => value !== null && value !== undefined)
+        const filtered = Object.fromEntries(
+            Object.entries(context).filter(([_, v]) => v !== null && v !== undefined && v !== '')
         );
-
-        return {
-            ...filteredContext,
-            message: 'Profile updated successfully'
-        };
+        return { ...filtered, message: 'Profile updated successfully' };
     }
 });
