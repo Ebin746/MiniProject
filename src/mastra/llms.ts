@@ -1,22 +1,10 @@
-// export const PRIMARY_MODEL = 'groq/llama-3.3-70b-versatile';
-export const PRIMARY_MODEL = 'cerebras/gpt-oss-120b';
 
+
+
+// export const PRIMARY_MODEL = 'google/gemini-2.5-flash';
+// export const PRIMARY_MODEL = 'google/gemini-3-flash-preview';
+
+// export const PRIMARY_MODEL = 'groq/llama-3.3-70b-versatile';
+ export const PRIMARY_MODEL = 'cerebras/gpt-oss-120b';
 //export const PRIMARY_MODEL = 'groq/meta-llama/llama-4-scout-17b-16e-instruct';
 //export const PRIMARY_MODEL = 'cerebras/llama3.1-8b';
-
-
-/**
- * Groq Rate Limits (Developer Tier):
- * 
- * Llama 3.3 70B Versatile:
- * - ID: llama-3.3-70b-versatile
- * - RPM: 1,000 | TPM: 300,000
- * 
- * Llama 3.1 8B Instant:
- * - ID: llama-3.1-8b-instant
- * - RPM: 1,000 | TPM: 250,000 (Developer) / 6,000 (Free)
- * 
- * Qwen 3 32B:
- * - ID: qwen/qwen3-32b
- * - RPM: 1,000 | TPM: 300,000
- */

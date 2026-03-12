@@ -1,141 +1,184 @@
-import { SessionData } from './session-manager';
+import { SessionData, ChatTurn, FactualMemory } from './session-manager';
 
-const MAX_LOG_ENTRIES = 8;
+const MAX_SHORT_TERM_PAIRS = 4;          // 4 user+assistant pairs = 8 messages
+const SHORT_TERM_LIMIT = MAX_SHORT_TERM_PAIRS * 2;
+
+// ── Short-term history ─────────────────────────────────────────────────────
 
 /**
- * Appends a message to the session log and trims it to the last MAX_LOG_ENTRIES entries.
+ * Appends one turn to short-term history, capped at last 4 pairs (8 entries).
  */
-export function appendLog(session: SessionData, message: string): void {
-    session.logs.push(message);
-    if (session.logs.length > MAX_LOG_ENTRIES) {
-        session.logs = session.logs.slice(-MAX_LOG_ENTRIES);
-    }
+export function appendShortTerm(
+  session: SessionData,
+  role: 'user' | 'assistant',
+  content: string
+): void {
+  session.shortTermHistory.push({ role, content });
+  if (session.shortTermHistory.length > SHORT_TERM_LIMIT) {
+    session.shortTermHistory = session.shortTermHistory.slice(-SHORT_TERM_LIMIT);
+  }
 }
 
-/**
- * Builds the compressed system context string that is injected as a system
- * message into every LLM call, giving the model awareness of the current
- * session state and recent conversation history.
- */
-export function buildSystemContext(session: SessionData): string {
-    const stage = `STAGE:${session.stage}`;
-    const p = JSON.stringify(session.profile);
-    const kyc = session.kycResult ? `|KYC:${JSON.stringify(session.kycResult)}` : '';
-    const c = session.creditResult ? `|CREDIT:${JSON.stringify(session.creditResult)}` : '';
-    const l = session.selectedLoan ? `|LOAN:${JSON.stringify(session.selectedLoan)}` : '';
-    const pdf = session.pdfPath ? `|PDF:${session.pdfPath}` : '';
-    const h = session.logs.join('|');
-    return `${stage}|PROFILE:${p}${kyc}${c}${l}${pdf}\nHISTORY:${h}`;
-}
+// ── Factual memory ─────────────────────────────────────────────────────────
 
 /**
- * Iterates over all tool results returned by the agent and updates the
- * session accordingly.  Each tool result updates a specific slice of
- * session state so downstream calls always have the latest data.
+ * Rebuilds factualMemory from the current session snapshot.
+ * Called after every tool-result pass so facts are always fresh.
+ */
+export function updateFactualMemory(session: SessionData): void {
+  const mem = session.factualMemory;
+  mem.stage = session.stage;
+
+  if (session.kycResult)         mem.kycVerified   = session.kycResult.verified;
+  if (session.creditResult) {
+    mem.creditFOIR     = session.creditResult.foir;
+    mem.creditRisk     = session.creditResult.risk;
+    mem.creditEligible = session.creditResult.eligible;
+  }
+  if (session.selectedLoan)      mem.loanName      = session.selectedLoan.name;
+  if (session.pdfPath)           mem.pdfPath       = session.pdfPath;
+}
+
+// ── System prompt ──────────────────────────────────────────────────────────
+
+const STAGE_TASK: Record<string, string> = {
+  sales:          'Collect name,income,employment → call updateProfile.',
+  kyc:            'Collect Aadhaar+DOB → call verifyKYC. DO_NOT_ASK:name,income,employment.',
+  credit:         'Ask PAN → getCreditScore → calculateFOIR. DO_NOT_ASK:Aadhaar,DOB,name,income.',
+  loan_selection: 'Show loans via getAvailableLoans → confirm selection. DO_NOT_ASK:any personal info.',
+  docs:           'Call generateLoanPDF → share download link.',
+  done:           'Conversation complete. Provide closing message only.',
+};
+
+/**
+ * Builds a compact system message from factual memory only (~150-220 chars).
+ */
+export function buildSystemPrompt(session: SessionData): string {
+  const mem = session.factualMemory;
+  const task = STAGE_TASK[mem.stage] ?? '';
+
+  // Build a compact FACTS line from only the fields that exist
+  const facts: string[] = [];
+  if (mem.name)                       facts.push(`name=${mem.name}`);
+  if (mem.income !== undefined)        facts.push(`income=${mem.income}`);
+  if (mem.employment)                  facts.push(`employment=${mem.employment}`);
+  if (mem.existing_emi !== undefined)  facts.push(`emi=${mem.existing_emi}`);
+  if (mem.aadhaar)                     facts.push(`aadhaar=✓`);
+  if (mem.dob)                         facts.push(`dob=${mem.dob}`);
+  if (mem.pan)                         facts.push(`pan=✓`);
+  if (mem.kycVerified !== undefined)   facts.push(`kyc=${mem.kycVerified ? 'verified' : 'failed'}`);
+  if (mem.creditFOIR !== undefined)    facts.push(`foir=${mem.creditFOIR}`);
+  if (mem.creditRisk)                  facts.push(`risk=${mem.creditRisk}`);
+  if (mem.creditEligible !== undefined) facts.push(`eligible=${mem.creditEligible}`);
+  if (mem.loanName)                    facts.push(`loan=${mem.loanName}`);
+  if (mem.pdfPath)                     facts.push(`pdf=${mem.pdfPath}`);
+
+  const factsLine = facts.length > 0 ? `FACTS:${facts.join(',')}` : 'FACTS:none';
+  const systemPrompt = `STAGE:${mem.stage}\n${factsLine}\nTASK:${task}`;
+  console.log(`System Context Build - Length: ${systemPrompt.length} chars`);
+  return systemPrompt;
+}
+
+// ── Message assembly ───────────────────────────────────────────────────────
+
+/**
+ * Assembles the full message array for masterAgent.generate():
+ *   [system] + [last 4 user/assistant pairs] + [current user message]
+ */
+export function buildMessages(
+  userMessage: string,
+  session: SessionData
+): { role: string; content: string }[] {
+  return [
+    { role: 'system', content: buildSystemPrompt(session) },
+    ...session.shortTermHistory,
+    { role: 'user', content: userMessage },
+  ];
+}
+
+// ── Tool result processor ──────────────────────────────────────────────────
+
+/**
+ * Iterates over all tool results and updates session state.
+ * After this runs, call updateFactualMemory() to sync facts.
  */
 export function processToolResults(session: SessionData, toolResults: any[]): void {
-    toolResults.forEach((tr: any, i) => {
-        // Mastra wraps tool results as { type, payload: { toolName, args, result } }
-        const payload = tr.payload || tr;
-        const tName = payload.toolName || tr.toolName || tr.name || 'unknown';
-        const toolRes = payload.result ?? tr.result;
-        const toolArgs = payload.args ?? tr.args;
+  toolResults.forEach((tr: any, i) => {
+    const payload   = tr.payload || tr;
+    const tName     = payload.toolName || tr.toolName || tr.name || 'unknown';
+    const toolRes   = payload.result ?? tr.result;
+    const toolArgs  = payload.args   ?? tr.args;
 
-        console.log(`Processing tool [${i}]: ${tName}`);
+    console.log(`Processing tool [${i}]: ${tName}`);
 
-        // --- Profile fields (extracted from both args and result) ---
-        const profileSource = { ...toolArgs, ...(typeof toolRes === 'object' ? toolRes : {}) };
-        const profileFields = ['name', 'income', 'employment', 'existing_emi'];
-        const extracted: Record<string, any> = {};
+    // --- updateProfile: The single source of truth for profile mutations ---
+    if (tName === 'updateProfile') {
+      const src = { ...toolArgs, ...(typeof toolRes === 'object' ? toolRes : {}) };
+      const profileFields = ['name', 'income', 'employment', 'existing_emi', 'aadhaar', 'dob', 'pan'] as const;
+      const extracted: Record<string, any> = {};
 
-        profileFields.forEach(field => {
-            if (profileSource[field] !== undefined &&
-                profileSource[field] !== null &&
-                profileSource[field] !== '') {
-                extracted[field] = profileSource[field];
-            }
-        });
-
-        if (Object.keys(extracted).length > 0) {
-            session.profile = { ...session.profile, ...extracted };
-            console.log('Updated profile:', session.profile);
+      profileFields.forEach(field => {
+        if (src[field] !== undefined && src[field] !== null && src[field] !== '') {
+          extracted[field] = src[field];
         }
+      });
 
-        // --- updateProfile: advance to kyc stage ---
-        if (tName === 'updateProfile' && session.stage === 'sales') {
-            session.stage = 'kyc';
-            console.log('Stage updated to: kyc');
-        }
+      if (Object.keys(extracted).length > 0) {
+        session.factualMemory = { ...session.factualMemory, ...extracted };
+        console.log('Factual Memory updated via updateProfile:', session.factualMemory);
+      }
 
-        // --- verifyKYC: store result and advance stage ---
-        if (tName === 'verifyKYC' && toolRes) {
-            const verified = toolRes.kycFailed === false;
-            session.kycResult = {
-                verified,
-                message: toolRes.message || '',
-            };
-            if (verified) {
-                session.stage = 'credit';
-                console.log('KYC verified — stage updated to: credit');
-            } else {
-                session.stage = 'done';
-                console.log('KYC failed — stage updated to: done');
-            }
-            console.log('Updated kycResult:', session.kycResult);
-        }
-
-        // --- getCreditScore: end on low score ---
-        if (tName === 'getCreditScore' && toolRes) {
-            if (toolRes.creditScoreLow) {
-                session.stage = 'done';
-                console.log('Credit score too low — stage updated to: done');
-            }
-            console.log('Credit score processed:', toolRes.score, toolRes.scoreCategory);
-        }
-
-        // --- FOIR / credit result ---
-        if (tName === 'calculateFOIR' && toolRes) {
-            session.creditResult = {
-                foir: toolRes.foir ?? 0,
-                risk: toolRes.risk ?? 'MEDIUM',
-                eligible: toolRes.eligible,
-                explanation: toolRes.explanation || '',
-            };
-            session.stage = 'credit';
-            console.log('Updated creditResult:', session.creditResult);
-        }
-
-        // --- Loan selection ---
-        if (tName === 'getAvailableLoans') {
-            session.stage = 'loan_selection';
-            console.log('Stage updated to: loan_selection');
-        }
-
-        // --- PDF generated ---
-        if (tName === 'generateLoanPDF' && toolRes?.pdfPath) {
-            session.pdfPath = toolRes.pdfPath;
-            session.stage = 'done';
-            console.log('PDF generated — stage updated to: done');
-        }
-
-        console.log(`Tool Result [${i}] raw:`, JSON.stringify(tr, null, 2));
-    });
-}
-
-/**
- * Derives the final reply text from the agent result.
- * Falls back to the last tool result's message if the agent returned no text.
- */
-export function resolveReply(result: any): string {
-    if (result.text) return result.text;
-
-    if (result.toolResults?.length > 0) {
-        const last = result.toolResults[result.toolResults.length - 1] as any;
-        const res = last.payload?.result || last.result;
-        return typeof res === 'string'
-            ? res
-            : (res?.explanation || res?.message || 'Processed.');
+      if (session.stage === 'sales') {
+        session.stage = 'kyc';
+      }
     }
 
-    return "I've processed your request.";
+    if (tName === 'verifyKYC' && toolRes) {
+      const verified = toolRes.kycFailed === false;
+      session.kycResult = { verified, message: toolRes.message || '' };
+      session.stage = verified ? 'credit' : 'done';
+    }
+
+    if (tName === 'getCreditScore' && toolRes) {
+      if (toolRes.creditScoreLow) session.stage = 'done';
+    }
+
+    if (tName === 'calculateFOIR' && toolRes) {
+      session.factualMemory.creditFOIR     = toolRes.foir        ?? 0;
+      session.factualMemory.creditRisk     = toolRes.risk        ?? 'MEDIUM';
+      session.factualMemory.creditEligible = toolRes.eligible;
+      
+      if (session.stage === 'credit' && toolRes.eligible) {
+        session.stage = 'loan_selection';
+      }
+    }
+
+    if (tName === 'getAvailableLoans') {
+      session.stage = 'loan_selection';
+    }
+
+    if (tName === 'generateLoanPDF' && toolRes?.pdfPath) {
+      session.pdfPath = toolRes.pdfPath;
+      session.stage   = 'done';
+    }
+  });
+}
+
+// ── Reply resolver ─────────────────────────────────────────────────────────
+
+/**
+ * Extracts the final reply text from the agent result.
+ */
+export function resolveReply(result: any): string {
+  if (result.text) return result.text;
+
+  if (result.toolResults?.length > 0) {
+    const last = result.toolResults[result.toolResults.length - 1] as any;
+    const res  = last.payload?.result || last.result;
+    return typeof res === 'string'
+      ? res
+      : (res?.explanation || res?.message || 'Processed.');
+  }
+
+  return "I've processed your request.";
 }

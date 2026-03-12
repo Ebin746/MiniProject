@@ -5,8 +5,7 @@ import dns from 'dns';
 dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
 // Use environment variable if available, otherwise fallback to the URL provided
-const URL = process.env.MONGODB_URI || "mongodb+srv://deonnjr10_db_user:minipro@cluster0.ld9i5zc.mongodb.net/mini_project_db?retryWrites=true&w=majority";
-
+const URL = process.env.MONGODB_URI
 const dbConnect = async () => {
     // Check if we have a connection to the database or if it's currently
     // connecting or disconnecting (readyState 1, 2 and 3)
@@ -15,7 +14,7 @@ const dbConnect = async () => {
     }
 
     try {
-        await mongoose.connect(URL);
+        await mongoose.connect(URL!);
         console.log("MongoDB Connected Successfully");
     } catch (error) {
         console.error("MongoDB Connection Failed:", error);

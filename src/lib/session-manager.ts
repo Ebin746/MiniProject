@@ -1,13 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-export interface UserProfile {
-  name?: string;
-  income?: number;
-  employment?: string;
-  existing_emi?: number;
-}
-
+// ── Tool-result snapshots ──────────────────────────────────────────────────
 export interface CreditResult {
   foir: number;
   risk: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -27,17 +21,46 @@ export interface KycResult {
   message: string;
 }
 
+// ── Factual Memory — single source of truth for confirmed facts ────────────
+export interface FactualMemory {
+  stage: string;
+  // collected profile fields (only confirmed values)
+  name?: string;
+  income?: number;
+  employment?: string;
+  existing_emi?: number;
+  aadhaar?: string;
+  dob?: string;
+  pan?: string;
+  kycVerified?: boolean;
+  creditFOIR?: number;
+  creditRisk?: string;
+  creditEligible?: boolean;
+  loanName?: string;
+  pdfPath?: string;
+}
+
+// ── Short-term chat turn ───────────────────────────────────────────────────
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// ── Session ────────────────────────────────────────────────────────────────
 export interface SessionData {
   sessionId: string;
   stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
-  profile: UserProfile;
   kycResult?: KycResult;
   creditResult?: CreditResult;
   selectedLoan?: SelectedLoan;
   pdfPath?: string;
-  logs: string[];
+  /** Confirmed facts — rebuilt after every tool call. Replaces old log blobs. */
+  factualMemory: FactualMemory;
+  /** Last 4 user/assistant pairs (8 entries max). Proper chat turns. */
+  shortTermHistory: ChatTurn[];
 }
 
+// ── Manager ────────────────────────────────────────────────────────────────
 class SessionManager {
   private sessions: Map<string, SessionData> = new Map();
   private sessionsDir = path.join(process.cwd(), 'sessions');
@@ -53,8 +76,8 @@ class SessionManager {
       const newSession: SessionData = {
         sessionId,
         stage: 'sales',
-        profile: {},
-        logs: [],
+        factualMemory: { stage: 'sales' },
+        shortTermHistory: [],
       };
       this.sessions.set(sessionId, newSession);
     }
@@ -65,20 +88,7 @@ class SessionManager {
     this.sessions.set(session.sessionId, session);
   }
 
-  updateSession(sessionId: string, data: Partial<SessionData>): void {
-    const session = this.getSession(sessionId);
-    const updatedSession = { ...session, ...data };
-    this.sessions.set(sessionId, updatedSession);
 
-    if (updatedSession.stage === 'done') {
-      this.persistSession(updatedSession);
-    }
-  }
-
-  private persistSession(session: SessionData): void {
-    const filePath = path.join(this.sessionsDir, `${session.sessionId}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(session, null, 2));
-  }
 }
 
 export const sessionManager = new SessionManager();
