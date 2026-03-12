@@ -22,14 +22,12 @@ export async function POST(req: Request) {
 
     // ── 1. Load session ───────────────────────────────────────────────────
     const session = sessionManager.getSession(sessionId);
-    if (!session.profile) session.profile = {};
 
-    console.log(`[${sessionId}] stage=${session.stage} profile=${JSON.stringify(session.profile)}`);
+    console.log(`[${sessionId}] stage=${session.stage} facts=${JSON.stringify(session.factualMemory)}`);
 
     // ── 2. Build message array: [system + last 4 pairs + current user] ────
     const messages = buildMessages(message, session);
-    console.log('System Prompt:', messages[0].content);
-    console.log('Short-term history length:', session.shortTermHistory.length);
+    // Logging occurs inside buildMessages -> buildSystemPrompt
 
     // ── 3. Call agent ─────────────────────────────────────────────────────
     const result = await masterAgent.generate(messages as any);
@@ -55,7 +53,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       response: reply,
       session: session,
-      profile: session.profile,
+      profile: session.factualMemory, // Map FactualMemory to 'profile' for frontend compatibility
       creditResult: session.creditResult,
       selectedLoan: session.selectedLoan,
       pdfPath: session.pdfPath,

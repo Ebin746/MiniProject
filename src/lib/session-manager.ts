@@ -1,17 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 
-// ── Profile ────────────────────────────────────────────────────────────────
-export interface UserProfile {
-  name?: string;
-  income?: number;
-  employment?: string;
-  existing_emi?: number;
-  aadhaar?: string;
-  dob?: string;
-  pan?: string;
-}
-
 // ── Tool-result snapshots ──────────────────────────────────────────────────
 export interface CreditResult {
   foir: number;
@@ -40,7 +29,7 @@ export interface FactualMemory {
   income?: number;
   employment?: string;
   existing_emi?: number;
-  aadhaar?: string;       // stored as boolean flag to save space
+  aadhaar?: string;
   dob?: string;
   pan?: string;
   kycVerified?: boolean;
@@ -61,7 +50,6 @@ export interface ChatTurn {
 export interface SessionData {
   sessionId: string;
   stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
-  profile: UserProfile;
   kycResult?: KycResult;
   creditResult?: CreditResult;
   selectedLoan?: SelectedLoan;
@@ -88,7 +76,6 @@ class SessionManager {
       const newSession: SessionData = {
         sessionId,
         stage: 'sales',
-        profile: {},
         factualMemory: { stage: 'sales' },
         shortTermHistory: [],
       };
@@ -101,20 +88,7 @@ class SessionManager {
     this.sessions.set(session.sessionId, session);
   }
 
-  updateSession(sessionId: string, data: Partial<SessionData>): void {
-    const session = this.getSession(sessionId);
-    const updatedSession = { ...session, ...data };
-    this.sessions.set(sessionId, updatedSession);
 
-    if (updatedSession.stage === 'done') {
-      this.persistSession(updatedSession);
-    }
-  }
-
-  private persistSession(session: SessionData): void {
-    const filePath = path.join(this.sessionsDir, `${session.sessionId}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(session, null, 2));
-  }
 }
 
 export const sessionManager = new SessionManager();

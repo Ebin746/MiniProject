@@ -26,16 +26,8 @@ export function appendShortTerm(
  * Called after every tool-result pass so facts are always fresh.
  */
 export function updateFactualMemory(session: SessionData): void {
-  const p = session.profile;
-  const mem: FactualMemory = { stage: session.stage };
-
-  if (p.name)                    mem.name         = p.name;
-  if (p.income !== undefined)    mem.income        = p.income;
-  if (p.employment)              mem.employment    = p.employment;
-  if (p.existing_emi !== undefined) mem.existing_emi = p.existing_emi;
-  if (p.aadhaar)                 mem.aadhaar       = p.aadhaar;
-  if (p.dob)                     mem.dob           = p.dob;
-  if (p.pan)                     mem.pan           = p.pan;
+  const mem = session.factualMemory;
+  mem.stage = session.stage;
 
   if (session.kycResult)         mem.kycVerified   = session.kycResult.verified;
   if (session.creditResult) {
@@ -45,8 +37,6 @@ export function updateFactualMemory(session: SessionData): void {
   }
   if (session.selectedLoan)      mem.loanName      = session.selectedLoan.name;
   if (session.pdfPath)           mem.pdfPath       = session.pdfPath;
-
-  session.factualMemory = mem;
 }
 
 // ── System prompt ──────────────────────────────────────────────────────────
@@ -84,7 +74,9 @@ export function buildSystemPrompt(session: SessionData): string {
   if (mem.pdfPath)                     facts.push(`pdf=${mem.pdfPath}`);
 
   const factsLine = facts.length > 0 ? `FACTS:${facts.join(',')}` : 'FACTS:none';
-  return `STAGE:${mem.stage}\n${factsLine}\nTASK:${task}`;
+  const systemPrompt = `STAGE:${mem.stage}\n${factsLine}\nTASK:${task}`;
+  console.log(`System Context Build - Length: ${systemPrompt.length} chars`);
+  return systemPrompt;
 }
 
 // ── Message assembly ───────────────────────────────────────────────────────
@@ -132,8 +124,8 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
       });
 
       if (Object.keys(extracted).length > 0) {
-        session.profile = { ...session.profile, ...extracted };
-        console.log('Profile updated via updateProfile:', session.profile);
+        session.factualMemory = { ...session.factualMemory, ...extracted };
+        console.log('Factual Memory updated via updateProfile:', session.factualMemory);
       }
 
       if (session.stage === 'sales') {
@@ -152,12 +144,10 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
     }
 
     if (tName === 'calculateFOIR' && toolRes) {
-      session.creditResult = {
-        foir:        toolRes.foir        ?? 0,
-        risk:        toolRes.risk        ?? 'MEDIUM',
-        eligible:    toolRes.eligible,
-        explanation: toolRes.explanation || '',
-      };
+      session.factualMemory.creditFOIR     = toolRes.foir        ?? 0;
+      session.factualMemory.creditRisk     = toolRes.risk        ?? 'MEDIUM';
+      session.factualMemory.creditEligible = toolRes.eligible;
+      
       if (session.stage === 'credit' && toolRes.eligible) {
         session.stage = 'loan_selection';
       }
