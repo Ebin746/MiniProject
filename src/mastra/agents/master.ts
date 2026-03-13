@@ -3,7 +3,7 @@
 import { Agent } from '@mastra/core';
 import { Memory } from '@mastra/memory';
 import { MongoDBStore } from '@mastra/mongodb';
-import { MASTER_AGENT_PROMPT } from '../prompts/master';
+import { BASE_PROMPT } from '../prompts/master';
 import { PRIMARY_MODEL } from '../llms';
 import {
   getAvailableLoans, generateLoanPDF, updateProfile,
@@ -13,9 +13,6 @@ import {
 // ── Read env vars FIRST, outside everything ──────────────────────
 const MONGODB_URI = process.env.MONGODB_URI;
 const MONGODB_DB = process.env.MONGODB_DB_NAME;
-
-console.log('URI:', MONGODB_URI);   // confirm value at startup
-console.log('DB:', MONGODB_DB);
 
 if (!MONGODB_URI) throw new Error('MONGODB_URI missing from .env');
 if (!MONGODB_DB) throw new Error('MONGODB_DB_NAME missing from .env');
@@ -39,7 +36,7 @@ const memory = new Memory({
 // ── Agent ─────────────────────────────────────────────────────────
 export const masterAgent = new Agent({
   name: 'Master Agent',
-  instructions: MASTER_AGENT_PROMPT,
+  instructions: BASE_PROMPT,
   model: PRIMARY_MODEL,
   memory,
   tools: {
@@ -52,7 +49,8 @@ export const masterAgent = new Agent({
     searchLoanPolicy,
   },
   defaultGenerateOptions: {
-    maxSteps: 10,
+    maxSteps: 7,
+    maxTokens: 600,
     temperature: 0.3,
   },
 });
