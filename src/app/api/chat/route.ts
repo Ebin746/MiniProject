@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { masterAgent, memory } from "@/mastra/agents/master";
+import { masterAgent } from "@/mastra/agents/master";
+import { memory } from "@/mastra/memory";
 import { sessionManager } from "@/lib/session-manager";
 import { processToolResults, resolveReply } from "@/lib/chat-memory";
 
