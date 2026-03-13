@@ -3,7 +3,7 @@
 import { Agent } from '@mastra/core';
 import { Memory } from '@mastra/memory';
 import { MongoDBStore } from '@mastra/mongodb';
-import { BASE_PROMPT } from '../prompts/master';
+import { MasterAgentPrompt } from '../prompts/master';
 import { PRIMARY_MODEL } from '../llms';
 import {
   getAvailableLoans, generateLoanPDF, updateProfile,
@@ -32,25 +32,26 @@ const memory = new Memory({
     lastMessages: 8,
   },
 });
-
 // ── Agent ─────────────────────────────────────────────────────────
-export const masterAgent = new Agent({
-  name: 'Master Agent',
-  instructions: BASE_PROMPT,
-  model: PRIMARY_MODEL,
-  memory,
-  tools: {
-    getAvailableLoans,
-    generateLoanPDF,
-    updateProfile,
-    calculateFOIR,
-    verifyKYC,
-    getCreditScore,
-    searchLoanPolicy,
-  },
-  defaultGenerateOptions: {
-    maxSteps: 7,
-    maxTokens: 600,
-    temperature: 0.3,
-  },
-});
+export const masterAgent = (stage: string) => {
+  return new Agent({
+    name: 'Master Agent',
+    instructions: MasterAgentPrompt(stage),
+    model: PRIMARY_MODEL,
+    memory,
+    tools: {
+      getAvailableLoans,
+      generateLoanPDF,
+      updateProfile,
+      calculateFOIR,
+      verifyKYC,
+      getCreditScore,
+      searchLoanPolicy,
+    },
+    defaultGenerateOptions: {
+      maxSteps: 7,
+      maxTokens: 600,
+      temperature: 0.5,
+    },
+  });
+}
