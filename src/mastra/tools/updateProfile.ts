@@ -8,7 +8,7 @@ export const updateProfile = createTool({
         name: z.string().nullable().optional().describe('Full name.'),
         income: z.union([z.number(), z.string()]).nullable().optional().describe('Monthly income.'),
         employment: z.string().nullable().optional().describe('Employment type (salaried/self-employed/business).'),
-        existing_emi: z.number().nullable().optional().describe('Existing monthly EMI obligations.'),
+        existing_emi: z.union([z.number(), z.string()]).nullable().optional().describe('Existing monthly EMI obligations.'),
         aadhaar: z.string().nullable().optional().describe('12-digit Aadhaar number.'),
         dob: z.string().nullable().optional().describe('Date of birth (DD/MM/YYYY).'),
         pan: z.string().nullable().optional().describe('10-character PAN number.'),
