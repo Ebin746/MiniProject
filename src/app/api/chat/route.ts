@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { masterAgent } from "@/mastra/agents/master";
+import { masterAgent, memory } from "@/mastra/agents/master";
 import { sessionManager } from "@/lib/session-manager";
 import { processToolResults, resolveReply } from "@/lib/chat-memory";
 
@@ -23,6 +23,13 @@ export async function POST(req: Request) {
       threadId: sessionId,
       resourceId: sessionId,
     });
+
+    // Get working memory (facts the agent remembers)
+    const workingMemory = await memory.getWorkingMemory({
+      threadId: sessionId,
+      resourceId: sessionId,
+    });
+    console.log('💾 Working Memory:', workingMemory);
 
     // 1. Process tool calls to update session stage/facts
     if (result.toolResults) {

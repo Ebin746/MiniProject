@@ -25,7 +25,7 @@ const storage = new MongoDBStore({
 
 
 // ── Memory ────────────────────────────────────────────────────────
-const memory = new Memory({
+export const memory = new Memory({
   storage,
   options: {
     workingMemory: { enabled: true },
