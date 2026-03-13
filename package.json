@@ -14,6 +14,8 @@
     "@google/generative-ai": "^0.24.1",
     "@mastra/ai-sdk": "^0.3.3",
     "@mastra/core": "^0.24.9",
+    "@mastra/memory": "^0.15.13",
+    "@mastra/mongodb": "^0.14.11",
     "ai": "^6.0.64",
     "bcryptjs": "^3.0.3",
     "jose": "^6.1.3",

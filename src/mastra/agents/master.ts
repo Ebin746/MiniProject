@@ -1,12 +1,47 @@
-import { Agent } from '@mastra/core';
-import { MASTER_AGENT_PROMPT } from '../prompts/master';
-import { getAvailableLoans, generateLoanPDF, updateProfile, calculateFOIR, verifyKYC, getCreditScore, searchLoanPolicy } from '../tools';
-import { PRIMARY_MODEL } from '../llms';
+// master.ts
 
+import { Agent } from '@mastra/core';
+import { Memory } from '@mastra/memory';
+import { MongoDBStore } from '@mastra/mongodb';
+import { MASTER_AGENT_PROMPT } from '../prompts/master';
+import { PRIMARY_MODEL } from '../llms';
+import {
+  getAvailableLoans, generateLoanPDF, updateProfile,
+  calculateFOIR, verifyKYC, getCreditScore, searchLoanPolicy
+} from '../tools';
+
+// ── Read env vars FIRST, outside everything ──────────────────────
+const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_DB = process.env.MONGODB_DB_NAME;
+
+console.log('URI:', MONGODB_URI);   // confirm value at startup
+console.log('DB:', MONGODB_DB);
+
+if (!MONGODB_URI) throw new Error('MONGODB_URI missing from .env');
+if (!MONGODB_DB) throw new Error('MONGODB_DB_NAME missing from .env');
+
+// ── Storage ───────────────────────────────────────────────────────
+const storage = new MongoDBStore({
+  url: MONGODB_URI,
+  dbName: MONGODB_DB,
+})
+
+
+// ── Memory ────────────────────────────────────────────────────────
+const memory = new Memory({
+  storage,
+  options: {
+    workingMemory: { enabled: true },
+    lastMessages: 8,
+  },
+});
+
+// ── Agent ─────────────────────────────────────────────────────────
 export const masterAgent = new Agent({
   name: 'Master Agent',
   instructions: MASTER_AGENT_PROMPT,
   model: PRIMARY_MODEL,
+  memory,
   tools: {
     getAvailableLoans,
     generateLoanPDF,
@@ -17,8 +52,7 @@ export const masterAgent = new Agent({
     searchLoanPolicy,
   },
   defaultGenerateOptions: {
-    maxSteps: 8,
-    maxTokens: 600,
-    temperature: 0.3
-  }
+    maxSteps: 10,
+    temperature: 0.3,
+  },
 });
