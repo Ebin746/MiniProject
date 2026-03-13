@@ -18,7 +18,26 @@ const storage = new MongoDBStore({
 export const memory = new Memory({
   storage,
   options: {
-    workingMemory: { enabled: true },
+    workingMemory: {
+      enabled: true,
+      scope: 'resource',
+      template: `# WORKING MEMORY
+## User Profile
+- Name:
+- Monthly Income:
+- Employment Type:
+- Aadhaar NO:
+- Date of Birth:
+- PAN Card:
+## Application Status
+- Current Stage:
+- KYC Status:
+- Credit Score:
+- FOIR:
+- Selected Loan:
+- Confirmation PDF:
+`,
+    },
     lastMessages: 8,
   },
 });

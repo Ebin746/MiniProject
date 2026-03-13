@@ -5,4 +5,7 @@
 //export const PRIMARY_MODEL = 'groq/meta-llama/llama-4-scout-17b-16e-instruct';
 //export const PRIMARY_MODEL = 'cerebras/llama3.1-8b';
 //export const PRIMARY_MODEL = 'groq/openai/gpt-oss-20b';
-export const PRIMARY_MODEL = 'groq/openai/gpt-oss-120b';
+////export const PRIMARY_MODEL = 'groq/openai/gpt-oss-120b';
+
+//export const PRIMARY_MODEL = 'groq/moonshotai/kimi-k2-instruct';
+export const PRIMARY_MODEL = 'groq/moonshotai/kimi-k2-instruct-0905';
