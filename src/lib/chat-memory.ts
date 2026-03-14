@@ -6,21 +6,11 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
     const payload = tr.payload || tr;
     const tName = payload.toolName || tr.toolName || tr.name || 'unknown';
     const toolRes = payload.result ?? tr.result;
-    const toolArgs = payload.args ?? tr.args;
 
     console.log(`Processing tool [${i}]: ${tName}`);
 
     // --- updateProfile: The single source of truth for profile mutations ---
     if (tName === 'updateProfile') {
-      const src = { ...toolArgs, ...(typeof toolRes === 'object' ? toolRes : {}) };
-      const profileFields = ['name', 'income', 'employment', 'existing_emi', 'aadhaar', 'dob', 'pan'] as const;
-      const extracted: Record<string, any> = {};
-
-      profileFields.forEach(field => {
-        if (src[field] !== undefined && src[field] !== null && src[field] !== '') {
-          extracted[field] = src[field];
-        }
-      });
 
 
 
