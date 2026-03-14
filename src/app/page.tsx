@@ -1,289 +1,165 @@
-'use client';
-import ReactMarkdown from 'react-markdown';
-import { useState, useEffect, useRef } from 'react';
-import LoginSignup from '@/components/LoginSignup';
-import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
+import React from 'react';
+import  Link  from "next/link";
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-export default function Home() {
-  const [user, setUser] = useState<any>(null);
-  const [authChecking, setAuthChecking] = useState(true);
-  const [sessionId, setSessionId] = useState('');
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [stage, setStage] = useState<'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done'>('sales');
-  const [pdfPath, setPdfPath] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    checkAuth();
-    setSessionId(`session_${Math.random().toString(36).substring(7)}`);
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    } finally {
-      setAuthChecking(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      setUser(null);
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const sendMessage = async (overrideMessage?: string) => {
-    const userMessage = overrideMessage || input.trim();
-    if (!userMessage || loading) return;
-
-    if (!overrideMessage) setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, message: userMessage }),
-      });
-
-      const data = await response.json();
-      console.log(data);
-      if (data.error) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
-        setStage(data.session.stage);
-        if (data.pdfPath) {
-          setPdfPath(data.pdfPath);
-        }
-      }
-    } catch (error) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      // 1. Send to OCR Upload API
-      const res = await fetch('/api/ocr/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (data.text) {
-        // 2. Send extracted text to chat with unified prefix
-        sendMessage(`EXTRACTED_DOC_DATA: ${data.text}`);
-      } else {
-        alert('OCR failed to extract text. Please try or type manually.');
-      }
-    } catch (error) {
-      console.error('File upload error:', error);
-      alert('Error uploading file.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  if (authChecking) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-zinc-50 dark:bg-zinc-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginSignup onAuthSuccess={(userData) => setUser(userData)} />;
-  }
-
+const LandingPage = () => {
   return (
-    <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg ring-2 ring-indigo-500/20">
-            A
+    <div className="min-h-screen relative overflow-hidden bg-slate-50 selection:bg-teal-500/20 font-sans text-slate-900">
+      
+      {/* Background Glow Orbs */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-600/5 rounded-full blur-[120px] opacity-50"></div>
+        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-teal-500/5 rounded-full blur-[100px] opacity-30"></div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <div className="w-4 h-4 bg-white rounded-sm"></div>
+            </div>
+            <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">Finance Bot</span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
-              <span className="text-zinc-300 dark:text-zinc-700">|</span>
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                <UserIcon size={12} />
-                <span>{user.name}</span>
+          <div className="hidden md:flex gap-8 font-medium text-slate-600">
+            <a href="#how-it-works" className="hover:text-blue-600">Process</a>
+            <a href="#features" className="hover:text-blue-600">Features</a>
+            <a href="#reviews" className="hover:text-blue-600">Reviews</a>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href ="/login">
+            <button className="text-sm font-medium text-slate-600 px-4">Log In</button>
+            </Link>
+            <Link href ="/signup">
+            <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">Get Started</button>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-4 lg:pt-48 lg:pb-32 text-center lg:text-left">
+        <div className="container mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="flex-1 space-y-8">
+              <div className="inline-flex items-center gap-2 bg-white border border-blue-100 px-4 py-1.5 rounded-full text-sm font-medium text-blue-600 shadow-sm">
+                <span>✨ Smart Banking Assistant</span>
+              </div>
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] text-slate-900">
+                Get Your Loan Approved<br />
+                <span className="bg-gradient-to-r from-blue-600 via-teal-500 to-blue-600 bg-clip-text text-transparent">In Minutes, Not Days</span>
+              </h1>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0">
+                Our AI-powered bot analyzes your eligibility and connects you with the best loan offers instantly. Secure, fast, and completely automated.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
+                <button className="bg-blue-600 text-white w-full sm:w-auto text-lg h-14 px-10 rounded-2xl shadow-xl shadow-blue-600/30 font-bold hover:scale-105 transition-all">
+                  Apply Now
+                </button>
+                <button className="bg-white border border-slate-200 text-slate-700 w-full sm:w-auto text-lg h-14 px-10 rounded-2xl font-bold hover:bg-slate-50 transition-all">
+                  View Rates
+                </button>
               </div>
             </div>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : stage === 'kyc' || stage === 'credit' ? 'bg-amber-500' : 'bg-indigo-500'} animate-pulse`} />
-              Stage: {stage}
-              {pdfPath && (
-                <a
-                  href={pdfPath.startsWith('/pdfs/') ? `${typeof window !== 'undefined' ? window.location.origin : ''}${pdfPath}` : pdfPath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-2 text-indigo-400 hover:text-indigo-300 underline"
-                >
-                  View PDF
-                </a>
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
-            ID: {sessionId}
-          </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
-            title="Logout"
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* Chat History */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
-      >
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">👋</div>
-            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {user.name.split(' ')[0]}!</h2>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-              I'm your Loan Assistant. I can help you check your loan eligibility in minutes. Let's start with your basic details.
-            </p>
-          </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
-          >
-            <div
-              className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
-                ? 'bg-indigo-600 text-white rounded-tr-none'
-                : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
-                }`}
-            >
-              <div className="whitespace-pre-wrap max-w-none">
-                <ReactMarkdown
-                  components={{
-                    a: ({ node, ...props }) => {
-                      // Auto-prepend base URL for relative PDF links
-                      const href = props.href || '';
-                      const fullHref = href.startsWith('/pdfs/')
-                        ? `${window.location.origin}${href}`
-                        : href;
-
-                      return (
-                        <a
-                          {...props}
-                          href={fullHref}
-                          className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />
-                      );
-                    },
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
+            
+            {/* Visual Element (Chat Mockup) */}
+            <div className="flex-1 w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 hidden lg:block">
+              <div className="space-y-4">
+                <div className="bg-slate-100 p-3 rounded-2xl rounded-bl-none text-sm max-w-[80%] text-slate-700">Hi! I need a personal loan of 5 Lakhs.</div>
+                <div className="bg-blue-600 p-3 rounded-2xl rounded-br-none text-sm max-w-[80%] ml-auto text-white">Analyzing your PAN and score... I found 3 matches with low interest!</div>
+                <div className="h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-400">
+                  Loan Calculation Result
+                </div>
               </div>
             </div>
           </div>
-        ))}
+        </div>
+      </section>
 
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3.5 rounded-2xl rounded-tl-none shadow-sm flex gap-1.5 items-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.3s]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.15s]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce" />
+      {/* NEW: How it Works Section */}
+      <section id="how-it-works" className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">How it Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+            <div className="space-y-4">
+              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold mx-auto">1</div>
+              <h3 className="text-xl font-bold">Chat with Bot</h3>
+              <p className="text-slate-600">Provide basic details like PAN and Income to our smart AI assistant.</p>
+            </div>
+            <div className="space-y-4">
+              <div className="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-2xl font-bold mx-auto">2</div>
+              <h3 className="text-xl font-bold">Get Match</h3>
+              <p className="text-slate-600">We instantly compare rates from 20+ banks to find the lowest EMI.</p>
+            </div>
+            <div className="space-y-4">
+              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold mx-auto">3</div>
+              <h3 className="text-xl font-bold">Instant Payout</h3>
+              <p className="text-slate-600">Once approved, the funds are transferred directly to your bank.</p>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Input Area */}
-      <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-        <div className="max-w-4xl mx-auto flex gap-3 relative">
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={handleFileUpload}
-          />
-          <button
-            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || loading}
-            title="Upload Document (ID or Salary Slip)"
-          >
-            {uploading ? <Loader2 className="animate-spin" size={20} /> : <div className="flex items-center gap-1"><ImagePlus size={20} /><span className="text-[10px] font-bold">UPLOAD DOC</span></div>}
-          </button>
-          <input
-            className="flex-1 px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm transition-all"
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          />
-          <button
-            className={`px-6 py-2 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${loading
-              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
-              }`}
-            onClick={() => sendMessage()}
-            disabled={loading}
-          >
-            Send
-          </button>
         </div>
-        <p className="text-[10px] text-zinc-400 text-center mt-3 uppercase tracking-widest font-semibold">Powered by Mastra & Groq</p>
-      </div>
+      </section>
+
+      {/* Updated Features Section */}
+      <section id="features" className="py-24 px-4 bg-slate-900 text-white">
+        <div className="container mx-auto text-center">
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">Secure & Simple</h2>
+          <p className="text-slate-400 mb-12">Your financial security is our top priority.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
+              <div className="text-blue-400 text-4xl mb-4">⚡</div>
+              <h3 className="text-xl font-bold mb-4">Fast Process</h3>
+              <div className="text-slate-400">Skip the paperwork. Complete your application in under 5 minutes.</div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
+              <div className="text-teal-400 text-4xl mb-4">🤖</div>
+              <h3 className="text-xl font-bold mb-4">AI Driven</h3>
+              <div className="text-slate-400">Smart algorithms that ensure you never get rejected for small errors.</div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
+              <div className="text-blue-400 text-4xl mb-4">🔒</div>
+              <h3 className="text-xl font-bold mb-4">256-bit Security</h3>
+              <div className="text-slate-400">Bank-grade encryption to keep your Aadhar and PAN details safe.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* NEW: Reviews Section */}
+      <section id="reviews" className="py-24 bg-slate-50">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-16">Trusted by 10,000+ Users</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-left">
+              <p className="italic text-slate-600 mb-4">"I never knew taking a loan could be as easy as chatting on WhatsApp. The bot found me a rate 2% lower than my local bank!"</p>
+              <p className="font-bold text-slate-900">- Athul Raj</p>
+            </div>
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-left">
+              <p className="italic text-slate-600 mb-4">"The instant calculation for loan eligibility saved me so much time. Very secure and highly recommended!"</p>
+              <p className="font-bold text-slate-900">- Kiran Roy</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 border-t border-slate-200 bg-white">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-md">
+              <div className="w-4 h-4 bg-white rounded-sm"></div>
+            </div>
+            <span className="font-bold text-slate-900 text-xl">Finance Bot</span>
+          </div>
+          <p className="text-slate-500 text-sm">© 2026 Finance Bot. All Rights Reserved.</p>
+          <div className="flex gap-6 text-sm font-medium text-slate-500">
+            <span className="hover:text-blue-600 cursor-pointer">Privacy</span>
+            <span className="hover:text-blue-600 cursor-pointer">Terms</span>
+            <span className="hover:text-blue-600 cursor-pointer">Contact</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
-}
+};
+
+export default LandingPage;
