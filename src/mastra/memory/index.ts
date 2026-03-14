@@ -25,7 +25,6 @@ export const memory = new Memory({
 ## User Profile
 - Name:
 - Monthly Income:
-- Employment Type:
 - Aadhaar NO:
 - Date of Birth:
 - PAN Card:
