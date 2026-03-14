@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       threadId: sessionId,
       resourceId: sessionId,
     });
+    
+    console.log('[API/Chat] Raw LLM text response:', JSON.stringify(result.text));
 
     // Get working memory (facts the agent remembers)
     const workingMemory = await memory.getWorkingMemory({
@@ -41,7 +43,15 @@ export async function POST(req: Request) {
     sessionManager.saveSession(session);
 
     // 3. Resolve clean text reply
-    const cleanReply = resolveReply(result);
+    let cleanReply = resolveReply(result);
+
+    // Fallback deduplication for LLM glitches (e.g. Llama 3 repeating itself)
+    if (typeof cleanReply === 'string') {
+      const lines = cleanReply.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length === 2 && lines[0] === lines[1]) {
+        cleanReply = lines[0];
+      }
+    }
 
     return NextResponse.json({
       response: cleanReply,
