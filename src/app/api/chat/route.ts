@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { masterAgent } from "@/mastra/agents/master";
+import { memory } from "@/mastra/memory";
 import { sessionManager } from "@/lib/session-manager";
-import {
-  appendShortTerm,
-  buildMessages,
-  processToolResults,
-  resolveReply,
-  updateFactualMemory,
-} from "@/lib/chat-memory";
+import { processToolResults, resolveReply } from "@/lib/chat-memory";
 
 export async function POST(req: Request) {
   try {
@@ -20,49 +15,55 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── 1. Load session ───────────────────────────────────────────────────
     const session = sessionManager.getSession(sessionId);
+    const stage = session.stage || 'sales';
 
-    console.log(`[${sessionId}] stage=${session.stage} facts=${JSON.stringify(session.factualMemory)}`);
+    console.log(`[API/Chat] Session: ${sessionId} | Stage: ${stage}`);
 
-    // ── 2. Build message array: [system + last 4 pairs + current user] ────
-    const messages = buildMessages(message, session);
-    // Logging occurs inside buildMessages -> buildSystemPrompt
+    const result = await masterAgent(stage).generate(message, {
+      threadId: sessionId,
+      resourceId: sessionId,
+    });
+    
+    console.log('[API/Chat] Raw LLM text response:', JSON.stringify(result.text));
 
-    // ── 3. Call agent ─────────────────────────────────────────────────────
-    const result = await masterAgent.generate(messages as any);
-    console.log('Agent reply:', result.text);
+    // Get working memory (facts the agent remembers)
+    const workingMemory = await memory.getWorkingMemory({
+      threadId: sessionId,
+      resourceId: sessionId,
+    });
+    console.log('💾 Working Memory:', workingMemory);
 
-    // ── 4. Process tool results → update session state ────────────────────
-    if (result.toolResults?.length > 0) {
+    // 1. Process tool calls to update session stage/facts
+    if (result.toolResults) {
       processToolResults(session, result.toolResults);
     }
 
-    // ── 5. Sync factual memory from updated session ───────────────────────
-    updateFactualMemory(session);
-    console.log('Factual Memory:', JSON.stringify(session.factualMemory));
-
-    // ── 6. Resolve reply and record both turns in short-term history ──────
-    const reply = resolveReply(result);
-    appendShortTerm(session, 'user', message);
-    appendShortTerm(session, 'assistant', reply);
-
-    // ── 7. Persist ────────────────────────────────────────────────────────
+    // 2. Persist session
     sessionManager.saveSession(session);
 
-    return NextResponse.json({
-      response: reply,
-      session: session,
-      profile: session.factualMemory, // Map FactualMemory to 'profile' for frontend compatibility
-      creditResult: session.creditResult,
-      selectedLoan: session.selectedLoan,
-      pdfPath: session.pdfPath,
-    });
+    // 3. Resolve clean text reply
+    let cleanReply = resolveReply(result);
 
-  } catch (error) {
-    console.error("Route Error:", error);
+    // Fallback deduplication for LLM glitches (e.g. Llama 3 repeating itself)
+    if (typeof cleanReply === 'string') {
+      const lines = cleanReply.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length === 2 && lines[0] === lines[1]) {
+        cleanReply = lines[0];
+      }
+    }
+
+    return NextResponse.json({
+      response: cleanReply,
+      stage: session.stage,
+      session: {
+        stage: session.stage
+      }
+    });
+  } catch (error: any) {
+    console.error("[API/Chat] Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: error.message || "Internal Server Error" },
       { status: 500 }
     );
   }

@@ -4,7 +4,7 @@ export interface IPolicyDocument extends Document {
   filename: string;
   chunkIndex: number;
   text: string;
-  embedding: number[];
+  embedding: string;
   uploadedAt: Date;
 }
 
@@ -12,7 +12,7 @@ const PolicyDocumentSchema = new Schema<IPolicyDocument>({
   filename: { type: String, required: true },
   chunkIndex: { type: Number, required: true },
   text: { type: String, required: true },
-  embedding: { type: [Number], required: true },
+  embedding: { type: String, required: true },
   uploadedAt: { type: Date, default: Date.now },
 });
 

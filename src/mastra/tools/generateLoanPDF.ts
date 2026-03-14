@@ -10,7 +10,6 @@ export const generateLoanPDF = createTool({
     inputSchema: z.object({
         name: z.string().describe('User name'),
         income: z.union([z.number(), z.string()]).describe('Monthly income'),
-        employment: z.string().describe('Employment type'),
         existing_emi: z.union([z.number(), z.string()]).describe('Existing EMI'),
         loanName: z.string().describe('Name of the loan'),
         loanAmount: z.union([z.number(), z.string()]).describe('Loan amount'),
@@ -27,7 +26,6 @@ export const generateLoanPDF = createTool({
         };
 
         const name = context.name;
-        const employment = context.employment;
         const loanName = context.loanName;
 
         const income = parseValue(context.income);
@@ -73,7 +71,6 @@ export const generateLoanPDF = createTool({
             doc.fontSize(12)
                 .fillColor('#34495e')
                 .text(`Name: ${name}`)
-                .text(`Employment: ${employment}`)
                 .text(`Monthly Income: Rs.${income.toLocaleString('en-IN')}`)
                 .text(`Existing EMI: Rs.${existing_emi.toLocaleString('en-IN')}`)
                 .moveDown(2);
