@@ -1,92 +1,218 @@
-# 🏦 Loan Assistant: AI-Powered Financial Orchestrator
+# Finance Bot
 
-[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![Mastra](https://img.shields.io/badge/Mastra-AI-indigo?style=for-the-badge)](https://mastra.ai/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 
-**Loan Assistant** is a production-grade, multi-stage AI application designed to streamline the loan eligibility and application process. Using advanced AI orchestration and OCR technology, it guides users from initial inquiry to final document generation with a seamless, conversational interface.
+## Project Overview
 
----
+Finance Bot is an AI-powered conversational assistant designed to streamline the loan application process. It guides users through eligibility checks, offers loan options, and facilitates document generation through an intuitive chat interface.
 
-## ✨ Key Features
+This project aims to simplify financial services by automating key stages of loan application, from identity verification and credit assessment to personalized loan recommendations and instant document generation. By leveraging AI orchestration and a multi-agent system, Finance Bot delivers a fast, secure, and user-friendly experience, removing the complexities of traditional lending processes.
 
-- **🤖 Intelligent Multi-Agent System**: Powered by Mastra and Groq, our agent dynamically manages the loan lifecycle.
-- **📄 OCR Data Extraction**: Built-in document processing (Tesseract.js) to extract financial info from IDs and salary slips.
-- **🔄 Multi-Stage Workflow**: A state-aware session manager handles Sales, KYC, Credit Assessment, and Loan Selection.
-- **📊 Real-time Financial Analysis**: Instant FOIR (Fixed Obligation to Income Ratio) calculations and credit score assessment.
-- **🖨️ Automated PDF Generation**: Professional loan application PDFs generated on-the-fly via PDFKit.
-- **🔐 Secure Authentication**: JWT-based session management and secure MongoDB persistence.
+## ✨ Features
 
----
+*   **Intelligent Conversational Interface**: An AI agent guides users through the loan application with natural, multi-stage dialogue.
+*   **Automated KYC Verification**: Validates user identity using provided Aadhaar and date of birth information.
+*   **Credit Score Assessment**: Retrieves and evaluates user credit scores to determine eligibility.
+*   **FOIR Calculation**: Automatically computes the Fixed Obligation to Income Ratio for precise financial assessment.
+*   **Dynamic Loan Options**: Presents tailored loan products based on user eligibility and preferences.
+*   **On-the-fly Loan Document Generation**: Creates formal loan application PDFs once a loan is selected.
+*   **RAG-Enhanced Contextual Chat**: Incorporates Retrieval Augmented Generation (RAG) to provide relevant, context-aware responses based on past interactions.
+*   **User Profile Management**: Persists and updates user data securely throughout the application journey.
+*   **Document Upload with OCR**: Supports uploading identity documents for data extraction and verification.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS 4, Lucide React.
-- **AI Backend**: Mastra (Agentic Framework), Groq / DeepSeek LLMs.
-- **Database**: MongoDB with Mongoose ODM.
-- **Tools**: Tesseract.js (OCR), PDFKit (Document Generation).
-- **Environment**: Node.js with TypeScript and `tsx`.
+This project leverages a modern web and AI tech stack for a robust and scalable application.
 
----
+| Category               | Technology                                             | Description                                                                     |
+| :--------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------ |
+| **Frontend**           | Next.js, React                                         | Server-side rendering, client-side interactivity for the user interface.        |
+| **Styling**            | Tailwind CSS                                           | Utility-first CSS framework for rapid and consistent UI development.            |
+| **Backend Runtime**    | Node.js                                                | JavaScript runtime for server-side logic and API handling.                      |
+| **Language**           | TypeScript                                             | Strongly typed superset of JavaScript for enhanced code quality and maintainability. |
+| **AI Orchestration**   | Mastra AI                                              | Framework for building and managing AI agents and their tools.                  |
+| **Large Language Model** | Cerebras/Qwen-3-235b-a22b-instruct-2507 (or similar) | Powers the AI agent's conversational abilities and decision-making.             |
+| **Database**           | MongoDB                                                | NoSQL database for flexible and scalable data storage.                          |
+| **ORM**                | Mongoose                                               | Object Data Modeling (ODM) library for MongoDB.                                 |
+| **Document Processing**| PDFKit, Tesseract.js                                   | For generating PDF documents and Optical Character Recognition (OCR).           |
 
 ## 🚀 Quick Start
 
+Follow these steps to get the Finance Bot running on your local machine.
+
 ### Prerequisites
-- Node.js (v18+)
-- MongoDB instance (Local or Atlas)
-- Groq API Key
+
+*   Node.js (LTS recommended)
+*   npm or Yarn
+*   MongoDB instance (local or cloud)
 
 ### Installation
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd MiniProject
-   ```
+1.  Clone the repository:
+    bash
+    git clone https://github.com/your-username/MiniProject.git
+    cd MiniProject
+    
+2.  Install dependencies:
+    bash
+    npm install
+    # or
+    yarn install
+    
+3.  Create a `.env` file in the root directory based on a `.env.example` (if present) or provided instructions. This file will contain your MongoDB connection string and other environment-specific configurations.
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+### Initialize RAG Vector Indexes (One-Time Step)
 
-3. **Configure Environment**:
-   Create a `.env` file in the root and add the following:
-   ```env
-   MONGODB_URI=your_mongodb_uri
-   GROQ_API_KEY=your_groq_api_key
-   JWT_SECRET=your_super_secret_key
-   ```
+Before running the application, you need to initialize the vector indexes for the RAG system in your MongoDB database.
 
-4. **Run the Development Server**:
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+bash
+curl -X POST http://localhost:3000/api/rag/init-indexes
 
----
 
-## 📖 In-Depth Documentation
+You should receive a success message upon completion.
 
-For detailed technical information, please refer to the following guides:
+### Run the Development Server
 
-- 🏛️ **[Technical Architecture](./docs/ARCHITECTURE.md)**: Layered design, Mastra orchestration, and integration patterns.
-- 📂 **[Project Structure & File Guide](./docs/FILES.md)**: Detailed map of the codebase and file responsibilities.
-- 🌊 **[Data Flow & Workflow](./docs/DATA_FLOW.md)**: Visual guides for the loan lifecycle and OCR processing.
+After installation and RAG index initialization, start the application:
 
----
+bash
+npm run dev
+# or
+yarn dev
 
-## 🤝 Contributing
 
-We welcome contributions! Please follow the standard workflow:
-1. Fork the repo.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+The application will be accessible at `http://localhost:3000`.
 
----
+## 💻 Development
 
-## 📜 License
+### Project Structure
 
-Distributed under the MIT License. See `LICENSE` for more information.
+The project follows a modular structure, separating concerns into distinct directories:
+
+text
+MiniProject/
+├── docs/               # Technical documentation (Architecture, Data Flow)
+├── public/             # Static assets (images, fonts, generated PDFs)
+├── src/
+│   ├── app/            # Next.js App Router (Pages, API routes like /chat, /login)
+│   ├── components/     # Reusable React components
+│   ├── lib/            # Utilities, MongoDB connection, Session management, RAG components
+│   ├── mastra/         # AI Orchestration (LLMs, Agents, Prompts, Custom Tools)
+│   └── models/         # Mongoose Database Models (User, Loan, KYC, Credit)
+└── test/               # Test scripts and mock data
+
+
+### Key Directories and Files
+
+*   **`src/app/`**: Contains the main Next.js application pages (`page.tsx` for landing, `chat/page.tsx` for the main chat interface, `login/page.tsx`, `signup/page.tsx`, `upload/page.tsx`). Also hosts API routes like `api/chat`, `api/rag/init-indexes`, and `api/rag/search`.
+*   **`src/mastra/`**: Core of the AI orchestration.
+    *   `llms.ts`: Configures the Large Language Models used by the agents.
+    *   `agents/master.ts`: Defines the central AI agent that manages the user journey.
+    *   `tools/`: Contains custom tools (`calculateFOIR`, `verifyKYC`, `getCreditScore`, `generateLoanPDF`, etc.) that the AI agent can invoke.
+    *   `prompts/master.ts`: Stores the conversational prompts and stage-specific instructions for the AI agent.
+*   **`src/models/`**: Defines the Mongoose schemas for MongoDB, including `User.ts`, `Loan.ts`, `KYC.ts`, and `Credit.ts`.
+*   **`src/lib/`**: Houses utility functions and services.
+    *   `embeddings/`: Logic for generating and managing embeddings for RAG.
+    *   `rag/`: Components for Retrieval Augmented Generation, including `ragRetriever.ts` and `contextBuilder.ts`.
+    *   `mongodb.ts`: Establishes the database connection.
+
+## 📡 API Reference
+
+The project exposes several API endpoints to interact with the frontend and AI backend.
+
+### Chat API
+
+Interact with the AI assistant for loan applications.
+
+`POST /api/chat`
+
+**Request Body:**
+
+json
+{
+  "sessionId": "string",
+  "message": "string"
+}
+
+
+**Example Request:**
+
+bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "user456",
+    "message": "I want to apply for a personal loan."
+  }'
+
+
+### RAG Index Initialization
+
+Initializes or re-initializes the MongoDB vector indexes for RAG. This is a one-time setup.
+
+`POST /api/rag/init-indexes`
+
+**Example Request:**
+
+bash
+curl -X POST http://localhost:3000/api/rag/init-indexes
+
+
+**Example Response:**
+
+json
+{
+  "success": true,
+  "message": "Vector indexes created",
+  "timestamp": "2026-03-09T10:30:00Z"
+}
+
+
+### RAG Search (for Debugging/Verification)
+
+Allows manual searching of the RAG vector store.
+
+`POST /api/rag/search`
+
+**Request Body:**
+
+json
+{
+  "query": "string",
+  "limit": "number"
+}
+
+
+**Example Request:**
+
+bash
+curl -X POST http://localhost:3000/api/rag/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "how much income is needed",
+    "limit": 3
+  }'
+
+
+**Example Response:**
+
+json
+{
+  "success": true,
+  "query": "how much income is needed",
+  "resultCount": 1,
+  "results": [
+    {
+      "sessionId": "user456",
+      "userMessage": "My monthly income is ₹75,000",
+      "assistantMessage": "That's a good income!",
+      "distance": 0.08,
+      "createdAt": "2026-03-09T..."
+    }
+  ],
+  "timestamp": "2026-03-09T..."
+}
