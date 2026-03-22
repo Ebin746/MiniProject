@@ -1,4 +1,3 @@
-// src/components/PolicyUpload.tsx
 "use client";
 import { useState } from "react";
 
@@ -25,13 +24,13 @@ export default function PolicyUpload() {
     setLoading(false);
     setStatus(
       res.ok
-        ? `✓ ${data.message}`
-        : `✗ ${data.error}`
+        ? ` ${data.message}`
+        : ` ${data.error}`
     );
   }
 
   return (
-    <div className="p-4 border rounded-lg bg-gray-50">
+    <div className="p-4 border rounded-lg">
       <h3 className="font-semibold mb-2">Upload Policy Document (PDF)</h3>
       <input
         type="file"
@@ -41,7 +40,7 @@ export default function PolicyUpload() {
         className="block w-full text-sm"
       />
       {status && (
-        <p className="mt-2 text-sm text-gray-600">{status}</p>
+        <p className="mt-2 text-sm ">{status}</p>
       )}
     </div>
   );

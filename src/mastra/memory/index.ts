@@ -32,6 +32,7 @@ export const memory = new Memory({
 - Current Stage:
 - KYC Status:
 - Credit Score:
+- Emi:
 - FOIR:
 - Selected Loan:
 - Confirmation PDF:

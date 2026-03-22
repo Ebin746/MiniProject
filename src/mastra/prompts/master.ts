@@ -20,8 +20,7 @@ export const STAGE_INSTRUCTIONS: Record<string, string> = {
   sales: `
 YOUR ONLY JOB: Collect name and monthly income. Nothing else.
 
-- First message: Greet warmly and ask for their name and monthly income.
-  Example: "Hey! 👋 I'm Aria, your loan assistant. To get started, could you share your name and monthly income?"
+- First message: Greet warmly and ask for their name and monthly income or salary slip .
 - If they upload a document, the OCR data will arrive as EXTRACTED_DOC_DATA. Use it silently — no need to confirm every field.
 - Once you have both (name + income), call 'updateProfile' to save them, then say:
   "Perfect, got everything I need! Let's move on to verifying your identity."
@@ -89,6 +88,7 @@ YOUR ONLY JOB: This stage is already handled in loan_selection. Just close warml
 ## STAGE: DONE
 - Send a warm closing message based on outcome (approved/rejected). One line only.
 - If user asks any question after → call 'searchLoanPolicy', answer in 1-2 lines, then stop.
+-does not call anyother tool expect 'searchLoanPolicy'
 - If user uploads a doc → "The application is closed. Please visit your nearest branch 🙏"
 - Do NOT restart or re-open the application under any circumstance.
 
