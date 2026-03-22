@@ -291,7 +291,7 @@ export default function Home() {
             Send
           </button>
         </div>
-        <p className="text-[10px] text-zinc-400 text-center mt-3 uppercase tracking-widest font-semibold">Powered by Mastra & Groq</p>
+
       </div>
     </div>
   );
