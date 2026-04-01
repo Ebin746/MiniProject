@@ -7,7 +7,7 @@ import { getSession as getAuthSession } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import mongoose from "mongoose";
-import { encryptField } from "@/lib/field-encryption";
+import { decryptField, encryptField } from "@/lib/field-encryption";
 
 type LooseToolResult = {
   payload?: Record<string, unknown>;
@@ -124,11 +124,27 @@ export async function POST(req: Request) {
 
     session.userId = resolvedUserId;
     const userDoc = await User.findById(session.userId).lean();
-    const returningEligible = Boolean(
+    let returningEligible = Boolean(
       userDoc?.verification?.eligibleApproved &&
       userDoc?.verification?.hasVerifiedKyc &&
       userDoc?.verification?.hasVerifiedPan
     );
+
+    let savedPan = "";
+    const encryptedPan = userDoc?.documents?.pan;
+    if (returningEligible && typeof encryptedPan === "string" && encryptedPan.trim()) {
+      try {
+        savedPan = decryptField(encryptedPan).trim().toUpperCase();
+      } catch (decryptError) {
+        console.error("[API/Chat] Failed to decrypt saved PAN for returning user:", decryptError);
+      }
+    }
+
+    // If saved PAN is unavailable/decryption fails, do not use returning shortcut.
+    if (returningEligible && !savedPan) {
+      returningEligible = false;
+    }
+
     session.returningEligible = returningEligible;
 
     const stage = session.stage || 'sales';
@@ -138,6 +154,7 @@ export async function POST(req: Request) {
     const enrichedMessage = [
       `SESSION_CONTEXT: returning_verified_user=${returningEligible ? "true" : "false"}`,
       `SESSION_CONTEXT: current_stage=${stage}`,
+      `SESSION_CONTEXT: saved_pan=${savedPan || ""}`,
       message,
     ].join("\n");
 
