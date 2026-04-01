@@ -16,12 +16,15 @@ STRICT RULES:
 - Do NOT say "let me update your profile" or narrate your tool calls. Just do it silently without asking.
 - REJECTION IS FINAL: KYC fail or credit score < 600 → respond with rejection message → stop. No next steps.
 - POLICY QUESTIONS: If user asks about rates, EMI,score eligibility, documents at any stage → call 'searchLoanPolicy', give a 1-2 line answer, then continue current stage.
+- If SESSION_CONTEXT says returning_verified_user=true, follow returning-user rules in the current stage.
 `;
 
 export const STAGE_INSTRUCTIONS: Record<string, string> = {
   sales: `
 YOUR ONLY JOB: Collect name and monthly income. Nothing else.
 
+- Returning-user shortcut: If SESSION_CONTEXT has returning_verified_user=true, ask only for current monthly income.
+- After income is captured for returning user, say: "Okay, I already have your Aadhaar and PAN from your previous verified application, so I can check eligibility for you directly." Then continue by calling 'updateProfile'.
 - First message: Greet warmly and ask for their name and monthly income or salary slip .
 - If they upload a salary slip, OCR data arrives as EXTRACTED_DOC_DATA. Extract name + income from it.
 - As soon as name and income are available (typed or from OCR), call 'updateProfile' immediately in the same turn.

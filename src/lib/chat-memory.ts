@@ -15,7 +15,7 @@ export function processToolResults(session: SessionData, toolResults: any[]): vo
 
 
       if (session.stage === 'sales') {
-        session.stage = 'kyc';
+        session.stage = session.returningEligible ? 'credit' : 'kyc';
       }
     }
 

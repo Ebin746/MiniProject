@@ -3,6 +3,8 @@
 export interface SessionData {
   sessionId: string;
   stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
+  userId?: string;
+  returningEligible?: boolean;
 }
 
 // ── Manager ────────────────────────────────────────────────────────────────
