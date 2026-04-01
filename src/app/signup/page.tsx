@@ -1,14 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Moon, Sun } from "lucide-react";
 
 export default function SignUpPage() {
+  const [isDark, setIsDark] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") {
+      setIsDark(true);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -56,8 +72,8 @@ export default function SignUpPage() {
       }
 
       router.push('/chat');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -65,34 +81,63 @@ export default function SignUpPage() {
 
   return (
 
-    <div className="flex min-h-screen relative overflow-hidden items-center justify-center bg-slate-50 px-4 py-12 font-sans">
+    <div className={`flex min-h-screen relative overflow-hidden items-center justify-center px-4 py-12 font-sans transition-colors duration-500 ${
+      isDark ? "bg-slate-950" : "bg-slate-50"
+    }`}>
       
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-600/5 rounded-full blur-[120px] opacity-60"></div>
-        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-teal-500/5 rounded-full blur-[100px] opacity-40"></div>
+        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-250 h-150 rounded-full blur-[120px] transition-colors duration-700 ${
+          isDark ? "bg-blue-900/20" : "bg-blue-600/5"
+        }`}></div>
+        <div className={`absolute bottom-0 right-0 w-200 h-150 rounded-full blur-[100px] transition-colors duration-700 ${
+          isDark ? "bg-teal-900/20" : "bg-teal-500/5"
+        }`}></div>
       </div>
 
       <div className="absolute top-0 w-full p-6">
-        <div className="mx-auto flex max-w-7xl items-center justify-center md:justify-start gap-2">
-           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
+          <div className="flex items-center justify-center md:justify-start gap-2">
+           <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
               <div className="w-5 h-5 bg-white rounded-sm"></div>
            </div>
-           <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">
+           <span className="text-xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">
              Finance Bot
            </span>
+          </div>
+          <button 
+            onClick={toggleTheme}
+            className={`relative w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none shadow-inner ${
+              isDark ? "bg-slate-800" : "bg-slate-200"
+            }`}
+            aria-label="Toggle theme"
+          >
+            <div className={`w-6 h-6 rounded-full shadow-md transform transition-transform duration-500 flex items-center justify-center ${
+              isDark ? "translate-x-6 bg-slate-900" : "translate-x-0 bg-white"
+            }`}>
+              {isDark ? (
+                <Moon size={14} className="text-blue-400 fill-blue-400" />
+              ) : (
+                <Sun size={14} className="text-yellow-500 fill-yellow-500" />
+              )}
+            </div>
+          </button>
         </div>
       </div>
 
-      <div className="w-full max-w-2xl space-y-8 rounded-[2.5rem] bg-white p-10 shadow-2xl shadow-slate-200/50 border border-slate-200 mt-20 relative z-10">
+      <div className={`w-full max-w-2xl space-y-8 rounded-[2.5rem] p-10 shadow-2xl border mt-20 relative z-10 transition-all duration-500 ${
+        isDark
+          ? "bg-slate-900 border-slate-800 shadow-black/40"
+          : "bg-white border-slate-200 shadow-slate-200/50"
+      }`}>
         <div className="text-center space-y-2">
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-800">
+          <h2 className={`mt-2 text-3xl font-bold tracking-tight transition-colors ${isDark ? "text-white" : "text-slate-800"}`}>
             Sign Up
           </h2>
         </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-100" />
+            <div className={`w-full border-t ${isDark ? "border-slate-800" : "border-slate-100"}`} />
           </div>
         </div>
 
@@ -107,7 +152,7 @@ export default function SignUpPage() {
             
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-slate-600 ml-1">
+                <label htmlFor="name" className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                   Full Name
                 </label>
                 <div className="mt-2">
@@ -116,7 +161,11 @@ export default function SignUpPage() {
                     name="name"
                     type="text"
                     required
-                    className="block w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                    className={`block w-full rounded-2xl border px-4 py-3 outline-none transition-all ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    }`}
                     placeholder="Ebin Amson"
                     value={formData.name}
                     onChange={handleChange}
@@ -125,7 +174,7 @@ export default function SignUpPage() {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-semibold text-slate-600 ml-1">
+                <label htmlFor="phone" className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                   Phone Number
                 </label>
                 <div className="mt-2">
@@ -134,7 +183,11 @@ export default function SignUpPage() {
                     name="phone"
                     type="tel"
                     required
-                    className="block w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                    className={`block w-full rounded-2xl border px-4 py-3 outline-none transition-all ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    }`}
                     placeholder="+91 1234567890"
                     value={formData.phone}
                     onChange={handleChange}
@@ -144,7 +197,7 @@ export default function SignUpPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-600 ml-1">
+              <label htmlFor="email" className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                 Email address
               </label>
               <div className="mt-2">
@@ -153,7 +206,11 @@ export default function SignUpPage() {
                   name="email"
                   type="email"
                   required
-                  className="block w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                  className={`block w-full rounded-2xl border px-4 py-3 outline-none transition-all ${
+                    isDark
+                      ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                      : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  }`}
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={handleChange}
@@ -163,7 +220,7 @@ export default function SignUpPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-slate-600 ml-1">
+                <label htmlFor="password" className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                   Password
                 </label>
                 <div className="mt-2">
@@ -172,7 +229,11 @@ export default function SignUpPage() {
                     name="password"
                     type="password"
                     required
-                    className="block w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                    className={`block w-full rounded-2xl border px-4 py-3 outline-none transition-all ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    }`}
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
@@ -181,7 +242,7 @@ export default function SignUpPage() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-600 ml-1">
+                <label htmlFor="confirmPassword" className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                   Confirm Password
                 </label>
                 <div className="mt-2">
@@ -190,7 +251,11 @@ export default function SignUpPage() {
                     name="confirmPassword"
                     type="password"
                     required
-                    className="block w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                    className={`block w-full rounded-2xl border px-4 py-3 outline-none transition-all ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    }`}
                     placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={handleChange}
@@ -210,13 +275,13 @@ export default function SignUpPage() {
         </form>
 
         <div className="flex flex-col items-center justify-center">
-          <div className="mt-2 text-sm text-slate-500">
+          <div className={`mt-2 text-sm transition-colors ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Already have an account?{" "}
             <Link href="login" className="font-bold text-blue-600 hover:text-teal-600 transition-colors">
               Log In
             </Link>
           </div>
-          <div className="flex items-center justify-center mt-2 text-sm text-slate-500">
+          <div className={`flex items-center justify-center mt-2 text-sm transition-colors ${isDark ? "text-slate-400" : "text-slate-500"}`}>
              <Link href="/" className="font-bold text-blue-600 hover:text-teal-600 transition-colors">
               Home 
              </Link>
