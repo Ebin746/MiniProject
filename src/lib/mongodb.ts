@@ -1,23 +1,46 @@
 import mongoose from 'mongoose';
-import dns from 'dns';
 
-// Configure DNS to use Google's public DNS servers to bypass institutional blocking
-dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// Use environment variable if available, otherwise fallback to the URL provided
-const URL = process.env.MONGODB_URI
+if (!MONGODB_URI) {
+    throw new Error('Missing MONGODB_URI in environment variables');
+}
+
+type MongooseCache = {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+};
+
+const globalWithMongoose = global as typeof globalThis & {
+    mongooseCache?: MongooseCache;
+};
+
+const cached: MongooseCache = globalWithMongoose.mongooseCache ?? {
+    conn: null,
+    promise: null,
+};
+
+globalWithMongoose.mongooseCache = cached;
+
 const dbConnect = async () => {
-    // Check if we have a connection to the database or if it's currently
-    // connecting or disconnecting (readyState 1, 2 and 3)
-    if (mongoose.connection.readyState >= 1) {
-        return;
+    if (cached.conn) {
+        return cached.conn;
+    }
+
+    if (!cached.promise) {
+        cached.promise = mongoose.connect(MONGODB_URI, {
+            bufferCommands: false,
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
     }
 
     try {
-        await mongoose.connect(URL!);
-        console.log("MongoDB Connected Successfully");
+        cached.conn = await cached.promise;
+        return cached.conn;
     } catch (error) {
-        console.error("MongoDB Connection Failed:", error);
+        cached.promise = null;
         throw error;
     }
 };
