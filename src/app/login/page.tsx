@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sun, Moon, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("theme") === "dark";
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -16,7 +19,19 @@ export default function LoginPage() {
     password: "",
   });
 
-  const toggleTheme = () => setIsDark(!isDark);
+  useEffect(() => {
+    if (!localStorage.getItem("theme")) {
+      localStorage.setItem("theme", "light");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -49,8 +64,8 @@ export default function LoginPage() {
       }
 
       router.push('/chat');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Invalid credentials");
     } finally {
       setLoading(false);
     }
@@ -63,10 +78,10 @@ export default function LoginPage() {
       
       {/* Background Glow Orbs */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] rounded-full blur-[120px] transition-colors duration-700 ${
+        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-250 h-150 rounded-full blur-[120px] transition-colors duration-700 ${
           isDark ? "bg-blue-900/20" : "bg-blue-600/5"
         }`}></div>
-        <div className={`absolute bottom-0 right-0 w-[800px] h-[600px] rounded-full blur-[100px] transition-colors duration-700 ${
+        <div className={`absolute bottom-0 right-0 w-200 h-150 rounded-full blur-[100px] transition-colors duration-700 ${
           isDark ? "bg-teal-900/20" : "bg-teal-500/5"
         }`}></div>
       </div>
@@ -74,10 +89,10 @@ export default function LoginPage() {
       {/* Header Section */}
       <div className="absolute top-0 w-full p-6 flex items-center justify-between px-8">
         <div className="flex items-center gap-2">
-           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+           <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
               <div className="w-5 h-5 bg-white rounded-sm"></div>
            </div>
-           <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">
+           <span className="text-xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">
              Finance Bot
            </span>
         </div>

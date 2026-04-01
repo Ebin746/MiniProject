@@ -6,15 +6,17 @@ import { useRouter } from "next/navigation";
 import { Loader2, Moon, Sun } from "lucide-react";
 
 export default function SignUpPage() {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("theme") === "dark";
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") {
-      setIsDark(true);
+    if (!localStorage.getItem("theme")) {
+      localStorage.setItem("theme", "light");
     }
   }, []);
 

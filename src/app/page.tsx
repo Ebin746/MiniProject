@@ -5,12 +5,14 @@ import  Link  from "next/link";
 import { Moon, Sun } from 'lucide-react';
 
 const LandingPage = () => {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("theme") === "dark";
+  });
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") {
-      setIsDark(true);
+    if (!localStorage.getItem("theme")) {
+      localStorage.setItem("theme", "light");
     }
   }, []);
 
@@ -187,13 +189,13 @@ const LandingPage = () => {
             <div className={`p-8 rounded-2xl shadow-sm border text-left ${
               isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"
             }`}>
-              <p className={`italic mb-4 ${isDark ? "text-slate-300" : "text-slate-600"}`}>"I never knew taking a loan could be as easy as chatting on WhatsApp. The bot found me a rate 2% lower than my local bank!"</p>
+              <p className={`italic mb-4 ${isDark ? "text-slate-300" : "text-slate-600"}`}>&ldquo;I never knew taking a loan could be as easy as chatting on WhatsApp. The bot found me a rate 2% lower than my local bank!&rdquo;</p>
               <p className={`font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}>- Athul Raj</p>
             </div>
             <div className={`p-8 rounded-2xl shadow-sm border text-left ${
               isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"
             }`}>
-              <p className={`italic mb-4 ${isDark ? "text-slate-300" : "text-slate-600"}`}>"The instant calculation for loan eligibility saved me so much time. Very secure and highly recommended!"</p>
+              <p className={`italic mb-4 ${isDark ? "text-slate-300" : "text-slate-600"}`}> &ldquo;The instant calculation for loan eligibility saved me so much time. Very secure and highly recommended!&rdquo;</p>
               <p className={`font-bold ${isDark ? "text-slate-100" : "text-slate-900"}`}>- Kiran Roy</p>
             </div>
           </div>
