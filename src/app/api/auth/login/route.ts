@@ -7,8 +7,14 @@ export async function POST(req: Request) {
     try {
         await dbConnect();
         const { email, password } = await req.json();
+        const normalizedEmail = String(email).toLowerCase().trim();
 
-        const user = await User.findOne({ email });
+        // Validate inputs
+        if (!email || !password) {
+            return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
+        }
+
+        const user = await User.findOne({ email: normalizedEmail }).select('+password');
         if (!user) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 400 });
         }

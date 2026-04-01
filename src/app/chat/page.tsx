@@ -1,11 +1,36 @@
 'use client';
 import ReactMarkdown from 'react-markdown';
+import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  ocrPreview?: OCRPreview;
+}
+
+interface OCRPreview {
+  fileName: string;
+  imageUrl: string;
+  fields: Array<{ label: string; value: string }>;
+}
+
+function parseExtractedFields(text: string): Array<{ label: string; value: string }> {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const parsed = lines
+    .map((line) => {
+      const match = line.match(/^[-*•\d.)\s]*(.+?)\s*:\s*(.+)$/);
+      if (!match) return null;
+      return { label: match[1].trim(), value: match[2].trim() };
+    })
+    .filter((item): item is { label: string; value: string } => Boolean(item));
+
+  return parsed.slice(0, 6);
 }
 
 export default function Home() {
@@ -20,6 +45,7 @@ export default function Home() {
   const [pdfPath, setPdfPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<string[]>([]);
 
   useEffect(() => {
     checkAuth();
@@ -55,12 +81,21 @@ export default function Home() {
     }
   }, [messages]);
 
-  const sendMessage = async (overrideMessage?: string) => {
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      previewUrlsRef.current = [];
+    };
+  }, []);
+
+  const sendMessage = async (overrideMessage?: string, options?: { hideUserEcho?: boolean }) => {
     const userMessage = overrideMessage || input.trim();
     if (!userMessage || loading) return;
 
     if (!overrideMessage) setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    if (!options?.hideUserEcho) {
+      setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    }
     setLoading(true);
 
     try {
@@ -93,6 +128,7 @@ export default function Home() {
     if (!file) return;
 
     setUploading(true);
+    const imageUrl = URL.createObjectURL(file);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -106,12 +142,27 @@ export default function Home() {
       const data = await res.json();
 
       if (data.text) {
-        // 2. Send extracted text to chat with unified prefix
-        sendMessage(`EXTRACTED_DOC_DATA: ${data.text}`);
+        // 2. Insert compact OCR summary as a user message, then send structured text silently
+        previewUrlsRef.current.push(imageUrl);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'user',
+            content: '',
+            ocrPreview: {
+              fileName: file.name,
+              imageUrl,
+              fields: parseExtractedFields(data.text),
+            },
+          },
+        ]);
+        sendMessage(`EXTRACTED_DOC_DATA: ${data.text}`, { hideUserEcho: true });
       } else {
+        URL.revokeObjectURL(imageUrl);
         alert('OCR failed to extract text. Please try or type manually.');
       }
     } catch (error) {
+      URL.revokeObjectURL(imageUrl);
       console.error('File upload error:', error);
       alert('Error uploading file.');
     } finally {
@@ -209,38 +260,69 @@ export default function Home() {
             key={i}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
           >
-            <div
-              className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
-                ? 'bg-indigo-600 text-white rounded-tr-none'
-                : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
-                }`}
-            >
-              <div className="whitespace-pre-wrap max-w-none">
-                <ReactMarkdown
-                  components={{
-                    a: ({ node, ...props }) => {
-                      // Auto-prepend base URL for relative PDF links
-                      const href = props.href || '';
-                      const fullHref = href.startsWith('/pdfs/')
-                        ? `${window.location.origin}${href}`
-                        : href;
-
-                      return (
-                        <a
-                          {...props}
-                          href={fullHref}
-                          className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />
-                      );
-                    },
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
+            {msg.ocrPreview ? (
+              <div className="w-64 rounded-2xl border border-zinc-200/80 bg-white/90 p-2 shadow-md">
+                <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
+                  <Image
+                    src={msg.ocrPreview.imageUrl}
+                    alt={msg.ocrPreview.fileName}
+                    width={256}
+                    height={96}
+                    unoptimized
+                    className="h-24 w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-zinc-900/35 via-zinc-900/10 to-transparent" />
+                  <div className="absolute bottom-1 left-2 right-2 text-[10px] font-medium text-white truncate">
+                    {msg.ocrPreview.fileName}
+                  </div>
+                </div>
+                <div className="mt-2 max-h-24 overflow-y-auto space-y-1.5 rounded-lg bg-zinc-50 p-2">
+                  {msg.ocrPreview.fields.length > 0 ? (
+                    msg.ocrPreview.fields.map((field, idx) => (
+                      <div key={`${field.label}-${idx}`} className="grid grid-cols-[80px_1fr] gap-2 text-[11px] leading-snug text-zinc-700">
+                        <span className="font-semibold text-zinc-500 truncate">{field.label}</span>
+                        <span className="text-zinc-800 wrap-break-word">{field.value}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[11px] text-zinc-500">Document captured and sent for verification.</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
+                  ? 'bg-indigo-600 text-white rounded-tr-none'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
+                  }`}
+              >
+                <div className="whitespace-pre-wrap max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      a: ({ ...props }) => {
+                        // Auto-prepend base URL for relative PDF links
+                        const href = props.href || '';
+                        const fullHref = href.startsWith('/pdfs/')
+                          ? `${window.location.origin}${href}`
+                          : href;
+
+                        return (
+                          <a
+                            {...props}
+                            href={fullHref}
+                            className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        );
+                      },
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 

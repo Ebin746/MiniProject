@@ -12,7 +12,6 @@ export default function LoginPage() {
   const router = useRouter();
   
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
     password: "",
   });
@@ -35,11 +34,18 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Invalid credentials');
+        const text = await res.text();
+        let message = 'Invalid credentials';
+
+        try {
+          const parsed = JSON.parse(text);
+          message = parsed.error || message;
+        } catch {
+          // Keep fallback message when server returns non-JSON content.
+        }
+
+        throw new Error(message);
       }
 
       router.push('/chat');
@@ -124,27 +130,6 @@ export default function LoginPage() {
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-5">
-            <div>
-              <label className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                Full Name
-              </label>
-              <div className="mt-2">
-                <input
-                  name="name"
-                  type="text"
-                  required
-                  className={`block w-full rounded-2xl border px-4 py-3 outline-none transition-all ${
-                    isDark 
-                      ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" 
-                      : "bg-slate-50/50 border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                  }`}
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
             <div>
               <label className={`block text-sm font-semibold ml-1 transition-colors ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                 Email address
