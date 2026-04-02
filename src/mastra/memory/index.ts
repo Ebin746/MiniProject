@@ -1,5 +1,6 @@
 import { Memory } from '@mastra/memory';
 import { MongoDBStore } from '@mastra/mongodb';
+import { z } from 'zod';
 
 // ── Read env vars FIRST ───────────────────────────────────────────
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -21,22 +22,24 @@ export const memory = new Memory({
     workingMemory: {
       enabled: true,
       scope: 'resource',
-      template: `# WORKING MEMORY
-## User Profile
-- Name:
-- Monthly Income:
-- Aadhaar NO:
-- Date of Birth:
-- PAN Card:
-## Application Status
-- Current Stage:
-- KYC Status:
-- Credit Score:
-- Emi:
-- FOIR:
-- Selected Loan:
-- Confirmation PDF:
-`,
+      schema: z.object({
+        userProfile: z.object({
+          name: z.string().optional(),
+          monthlyIncome: z.union([z.number(), z.string()]).optional(),
+          aadhaarNo: z.string().optional(),
+          dateOfBirth: z.string().optional(),
+          panCard: z.string().optional(),
+        }),
+        applicationStatus: z.object({
+          currentStage: z.string().optional(),
+          kycStatus: z.string().optional(),
+          creditScore: z.union([z.number(), z.string()]).optional(),
+          emi: z.union([z.number(), z.string()]).optional(),
+          foir: z.union([z.number(), z.string()]).optional(),
+          selectedLoan: z.string().optional(),
+          confirmationPdf: z.string().optional(),
+        }),
+      }),
     },
     lastMessages: 8,
   },
