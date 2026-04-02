@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { masterAgent } from "@/mastra/agents/master";
 import { memory } from "@/mastra/memory";
 import { sessionManager } from "@/lib/session-manager";
-import { buildUserPersistenceUpdates, processToolResults, resolveReply } from "../../../lib/chat-memory";
+import { buildUserPersistenceUpdates, extractPdfPath, processToolResults, resolveReply } from "../../../lib/chat-memory";
 import { getSession as getAuthSession } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
@@ -49,6 +49,14 @@ function isWorkingMemoryToolParseError(error: unknown): boolean {
   );
 }
 
+function getWorkingMemoryField(workingMemory: string | null, label: string): string {
+  if (!workingMemory) return "";
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`-\\s*${escapedLabel}\\s*:\\s*(.*)`, "i");
+  const match = workingMemory.match(regex);
+  return match?.[1]?.trim() || "";
+}
+
 export async function POST(req: Request) {
   try {
     const { sessionId, message } = await req.json();
@@ -87,45 +95,60 @@ export async function POST(req: Request) {
 
     session.userId = resolvedUserId;
     if (!session.userHydrated) {
-      await dbConnect();
-      const userDoc = await User.findById(session.userId)
-        .select("verification documents.pan")
-        .lean();
+      const rememberedWorkingMemory = await memory.getWorkingMemory({
+        threadId: sessionId,
+        resourceId: session.userId,
+      });
 
-      let returningEligible = Boolean(
-        userDoc?.verification?.eligibleApproved &&
-        userDoc?.verification?.hasVerifiedKyc &&
-        userDoc?.verification?.hasVerifiedPan
-      );
+      const rememberedPan = getWorkingMemoryField(rememberedWorkingMemory, "PAN Card").toUpperCase();
+      const rememberedKycStatus = getWorkingMemoryField(rememberedWorkingMemory, "KYC Status").toLowerCase();
+      const hasRememberedVerification = Boolean(rememberedPan) && rememberedKycStatus === "verified";
 
-      let savedPan = "";
-      const encryptedPan = userDoc?.documents?.pan;
-      if (returningEligible && typeof encryptedPan === "string" && encryptedPan.trim()) {
-        try {
-          savedPan = decryptField(encryptedPan).trim().toUpperCase();
-        } catch (decryptError) {
-          console.error("[API/Chat] Failed to decrypt saved PAN for returning user:", decryptError);
+      if (hasRememberedVerification) {
+        session.returningEligible = true;
+        session.savedPan = rememberedPan;
+        session.userHydrated = true;
+      } else {
+        await dbConnect();
+        const userDoc = await User.findById(session.userId)
+          .select("verification documents.pan")
+          .lean();
+
+        let returningEligible = Boolean(
+          userDoc?.verification?.eligibleApproved &&
+          userDoc?.verification?.hasVerifiedKyc &&
+          userDoc?.verification?.hasVerifiedPan
+        );
+
+        let savedPan = "";
+        const encryptedPan = userDoc?.documents?.pan;
+        if (returningEligible && typeof encryptedPan === "string" && encryptedPan.trim()) {
+          try {
+            savedPan = decryptField(encryptedPan).trim().toUpperCase();
+          } catch (decryptError) {
+            console.error("[API/Chat] Failed to decrypt saved PAN for returning user:", decryptError);
+          }
         }
-      }
 
-      if (returningEligible && !savedPan) {
-        returningEligible = false;
-      }
+        if (returningEligible && !savedPan) {
+          returningEligible = false;
+        }
 
-      session.returningEligible = returningEligible;
-      session.savedPan = savedPan;
-      session.userHydrated = true;
-      session.persistedVerification = {
-        hasVerifiedKyc: Boolean(userDoc?.verification?.hasVerifiedKyc),
-        hasVerifiedPan: Boolean(userDoc?.verification?.hasVerifiedPan),
-        eligibleApproved: Boolean(userDoc?.verification?.eligibleApproved),
-        lastCreditScore: typeof userDoc?.verification?.lastCreditScore === "number"
-          ? userDoc.verification.lastCreditScore
-          : null,
-        lastFoir: typeof userDoc?.verification?.lastFoir === "number"
-          ? userDoc.verification.lastFoir
-          : null,
-      };
+        session.returningEligible = returningEligible;
+        session.savedPan = savedPan;
+        session.userHydrated = true;
+        session.persistedVerification = {
+          hasVerifiedKyc: Boolean(userDoc?.verification?.hasVerifiedKyc),
+          hasVerifiedPan: Boolean(userDoc?.verification?.hasVerifiedPan),
+          eligibleApproved: Boolean(userDoc?.verification?.eligibleApproved),
+          lastCreditScore: typeof userDoc?.verification?.lastCreditScore === "number"
+            ? userDoc.verification.lastCreditScore
+            : null,
+          lastFoir: typeof userDoc?.verification?.lastFoir === "number"
+            ? userDoc.verification.lastFoir
+            : null,
+        };
+      }
     }
 
     const returningEligible = Boolean(session.returningEligible);
@@ -146,7 +169,7 @@ export async function POST(req: Request) {
     try {
       result = await masterAgent(stage).generate(enrichedMessage, {
         threadId: sessionId,
-        resourceId: sessionId,
+        resourceId: session.userId,
       });
     } catch (generateError) {
       if (!isWorkingMemoryToolParseError(generateError)) {
@@ -156,7 +179,7 @@ export async function POST(req: Request) {
       console.warn('[API/Chat] Retrying without memory after malformed updateWorkingMemory tool arguments.');
       result = await masterAgent(stage, { disableMemory: true }).generate(enrichedMessage, {
         threadId: sessionId,
-        resourceId: sessionId,
+        resourceId: session.userId,
       });
     }
     
@@ -165,7 +188,7 @@ export async function POST(req: Request) {
     // Get working memory (facts the agent remembers)
     const workingMemory = await memory.getWorkingMemory({
       threadId: sessionId,
-      resourceId: sessionId,
+      resourceId: session.userId,
     });
     console.log('💾 Working Memory:', workingMemory);
 
@@ -197,6 +220,7 @@ export async function POST(req: Request) {
 
     // 3. Resolve clean text reply
     let cleanReply = resolveReply(result);
+    const generatedPdfPath = result.toolResults ? extractPdfPath(result.toolResults) : null;
 
     // Fallback deduplication for LLM glitches (e.g. Llama 3 repeating itself)
     if (typeof cleanReply === 'string') {
@@ -208,6 +232,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       response: cleanReply,
+      pdfPath: generatedPdfPath,
       stage: session.stage,
       session: {
         stage: session.stage

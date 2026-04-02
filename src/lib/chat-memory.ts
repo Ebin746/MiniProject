@@ -147,6 +147,23 @@ export function buildUserPersistenceUpdates(
   return { updates, nextState };
 }
 
+export function extractPdfPath(toolResults: unknown[]): string | null {
+  for (let i = toolResults.length - 1; i >= 0; i -= 1) {
+    const toolName = getToolName(toolResults[i]);
+    if (toolName !== 'generateLoanPDF') continue;
+
+    const toolResult = getToolResult(toolResults[i]);
+    if (typeof toolResult.fullUrl === 'string' && toolResult.fullUrl.trim()) {
+      return toolResult.fullUrl.trim();
+    }
+    if (typeof toolResult.pdfPath === 'string' && toolResult.pdfPath.trim()) {
+      return toolResult.pdfPath.trim();
+    }
+  }
+
+  return null;
+}
+
 /**
  * Extracts the final reply text from the agent result.
  */
