@@ -4,16 +4,42 @@ import React, { useEffect, useState } from 'react';
 import  Link  from "next/link";
 import { Moon, Sun } from 'lucide-react';
 
+type AuthUser = {
+  userId?: string;
+  name?: string;
+  email?: string;
+};
+
 const LandingPage = () => {
   const [isDark, setIsDark] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("theme") === "dark";
   });
+  const [authChecking, setAuthChecking] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem("theme")) {
       localStorage.setItem("theme", "light");
     }
+
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user || null);
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   const toggleTheme = () => {
@@ -73,12 +99,27 @@ const LandingPage = () => {
                 )}
               </div>
             </button>
-            <Link href ="/login">
-            <button className={`text-sm font-medium px-4 ${isDark ? "text-slate-200" : "text-slate-600"}`}>Log In</button>
-            </Link>
-            <Link href ="/signup">
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">Get Started</button>
-            </Link>
+            {!authChecking && user ? (
+              <>
+                <span className={`hidden sm:inline text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-600"}`}>
+                  Welcome, {user.name || 'User'}
+                </span>
+                <Link href="/chat">
+                  <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
+                    Go to Chat
+                  </button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href ="/login">
+                  <button className={`text-sm font-medium px-4 ${isDark ? "text-slate-200" : "text-slate-600"}`}>Log In</button>
+                </Link>
+                <Link href ="/signup">
+                  <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">Get Started</button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -101,9 +142,11 @@ const LandingPage = () => {
                 Our AI-powered bot analyzes your eligibility and connects you with the best loan offers instantly. Secure, fast, and completely automated.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
-                <button className="bg-blue-600 text-white w-full sm:w-auto text-lg h-14 px-10 rounded-2xl shadow-xl shadow-blue-600/30 font-bold hover:scale-105 transition-all">
-                  Apply Now
-                </button>
+                <Link href={user ? "/chat" : "/signup"} className="w-full sm:w-auto">
+                  <button className="bg-blue-600 text-white w-full sm:w-auto text-lg h-14 px-10 rounded-2xl shadow-xl shadow-blue-600/30 font-bold hover:scale-105 transition-all">
+                    {user ? 'Go to Chat' : 'Apply Now'}
+                  </button>
+                </Link>
                 <button className={`border w-full sm:w-auto text-lg h-14 px-10 rounded-2xl font-bold transition-all ${
                   isDark ? "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                 }`}>
