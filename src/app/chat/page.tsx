@@ -17,6 +17,31 @@ interface OCRPreview {
   fields: Array<{ label: string; value: string }>;
 }
 
+function normalizePdfHref(rawHref: string): string {
+  if (!rawHref) return rawHref;
+
+  try {
+    const url = rawHref.startsWith('http')
+      ? new URL(rawHref)
+      : new URL(rawHref, window.location.origin);
+
+    if (url.pathname === '/pdfs/loan_done') {
+      const fullUrl = url.searchParams.get('fullUrl');
+      if (fullUrl) {
+        return decodeURIComponent(fullUrl);
+      }
+    }
+
+    if (rawHref.startsWith('/pdfs/')) {
+      return `${window.location.origin}${rawHref}`;
+    }
+
+    return rawHref;
+  } catch {
+    return rawHref;
+  }
+}
+
 function parseExtractedFields(text: string): Array<{ label: string; value: string }> {
   const lines = text
     .split('\n')
@@ -304,11 +329,8 @@ export default function Home() {
                   <ReactMarkdown
                     components={{
                       a: ({ ...props }) => {
-                        // Auto-prepend base URL for relative PDF links
                         const href = props.href || '';
-                        const fullHref = href.startsWith('/pdfs/')
-                          ? `${window.location.origin}${href}`
-                          : href;
+                        const fullHref = normalizePdfHref(href);
 
                         return (
                           <a

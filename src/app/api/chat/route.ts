@@ -57,6 +57,14 @@ function getWorkingMemoryField(workingMemory: string | null, label: string): str
   return match?.[1]?.trim() || "";
 }
 
+function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | null): string {
+  if (!generatedPdfPath) return reply;
+
+  return reply
+    .replace(/\((?:https?:\/\/[^)\s]+)?\/pdfs\/loan_done[^)]*\)/gi, `(${generatedPdfPath})`)
+    .replace(/\b(?:https?:\/\/[^\s]+)?\/pdfs\/loan_done\S*/gi, generatedPdfPath);
+}
+
 export async function POST(req: Request) {
   try {
     const { sessionId, message } = await req.json();
@@ -221,6 +229,10 @@ export async function POST(req: Request) {
     // 3. Resolve clean text reply
     let cleanReply = resolveReply(result);
     const generatedPdfPath = result.toolResults ? extractPdfPath(result.toolResults) : null;
+
+    if (typeof cleanReply === 'string') {
+      cleanReply = patchBrokenPdfLinks(cleanReply, generatedPdfPath);
+    }
 
     // Fallback deduplication for LLM glitches (e.g. Llama 3 repeating itself)
     if (typeof cleanReply === 'string') {
