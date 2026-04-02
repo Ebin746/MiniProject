@@ -41,12 +41,22 @@ function extractUserId(authSession: Record<string, unknown>): string | null {
 }
 
 function isWorkingMemoryToolParseError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const message = error.message || "";
-  return (
-    message.includes("Failed to parse tool call arguments as JSON") &&
-    message.includes("updateWorkingMemory")
-  );
+  const serialized = (() => {
+    if (error instanceof Error) {
+      const details = JSON.stringify(error, Object.getOwnPropertyNames(error));
+      return `${error.message || ""}\n${details}`;
+    }
+    return String(error ?? "");
+  })();
+
+  const lower = serialized.toLowerCase();
+  const hasParseFailure = lower.includes("failed to parse tool call arguments as json");
+  const hasWorkingMemoryContext =
+    lower.includes("updateworkingmemory") ||
+    lower.includes("# working memory") ||
+    lower.includes("tool_use_failed");
+
+  return hasParseFailure && hasWorkingMemoryContext;
 }
 
 function getWorkingMemoryField(workingMemory: string | null, label: string): string {
@@ -60,9 +70,13 @@ function getWorkingMemoryField(workingMemory: string | null, label: string): str
 function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | null): string {
   if (!generatedPdfPath) return reply;
 
-  return reply
+  const patched = reply
     .replace(/\((?:https?:\/\/[^)\s]+)?\/pdfs\/loan_done[^)]*\)/gi, `(${generatedPdfPath})`)
     .replace(/\b(?:https?:\/\/[^\s]+)?\/pdfs\/loan_done\S*/gi, generatedPdfPath);
+
+  // If the model renders a broken markdown link like (http://) or empty target,
+  // force the known generated PDF URL for the download anchor text.
+  return patched.replace(/\[\s*Download\s+your\s+PDF\s*\]\([^)]*\)/gi, `[Download your PDF](${generatedPdfPath})`);
 }
 
 export async function POST(req: Request) {
@@ -175,7 +189,7 @@ export async function POST(req: Request) {
 
     let result;
     try {
-      result = await masterAgent(stage).generate(enrichedMessage, {
+      result = await masterAgent(stage, { isReturningUser: returningEligible }).generate(enrichedMessage, {
         threadId: sessionId,
         resourceId: session.userId,
       });
@@ -185,7 +199,10 @@ export async function POST(req: Request) {
       }
 
       console.warn('[API/Chat] Retrying without memory after malformed updateWorkingMemory tool arguments.');
-      result = await masterAgent(stage, { disableMemory: true }).generate(enrichedMessage, {
+      result = await masterAgent(stage, {
+        disableMemory: true,
+        isReturningUser: returningEligible,
+      }).generate(enrichedMessage, {
         threadId: sessionId,
         resourceId: session.userId,
       });

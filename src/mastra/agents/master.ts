@@ -11,13 +11,14 @@ import {
 
 type MasterAgentOptions = {
   disableMemory?: boolean;
+  isReturningUser?: boolean;
 };
 
 // ── Agent ─────────────────────────────────────────────────────────
 export const masterAgent = (stage: string, options: MasterAgentOptions = {}) => {
   return new Agent({
     name: 'Master Agent',
-    instructions: MasterAgentPrompt(stage),
+    instructions: MasterAgentPrompt(stage, { isReturningUser: options.isReturningUser }),
     model: PRIMARY_MODEL,
     ...(options.disableMemory ? {} : { memory }),
     tools: {
