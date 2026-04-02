@@ -9,13 +9,17 @@ import {
   calculateFOIR, verifyKYC, getCreditScore, searchLoanPolicy
 } from '../tools';
 
+type MasterAgentOptions = {
+  disableMemory?: boolean;
+};
+
 // ── Agent ─────────────────────────────────────────────────────────
-export const masterAgent = (stage: string) => {
+export const masterAgent = (stage: string, options: MasterAgentOptions = {}) => {
   return new Agent({
     name: 'Master Agent',
     instructions: MasterAgentPrompt(stage),
     model: PRIMARY_MODEL,
-    memory,
+    ...(options.disableMemory ? {} : { memory }),
     tools: {
       getAvailableLoans,
       generateLoanPDF,

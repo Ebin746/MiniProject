@@ -40,6 +40,15 @@ function extractUserId(authSession: Record<string, unknown>): string | null {
   return null;
 }
 
+function isWorkingMemoryToolParseError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message || "";
+  return (
+    message.includes("Failed to parse tool call arguments as JSON") &&
+    message.includes("updateWorkingMemory")
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const { sessionId, message } = await req.json();
@@ -133,10 +142,23 @@ export async function POST(req: Request) {
       message,
     ].join("\n");
 
-    const result = await masterAgent(stage).generate(enrichedMessage, {
-      threadId: sessionId,
-      resourceId: sessionId,
-    });
+    let result;
+    try {
+      result = await masterAgent(stage).generate(enrichedMessage, {
+        threadId: sessionId,
+        resourceId: sessionId,
+      });
+    } catch (generateError) {
+      if (!isWorkingMemoryToolParseError(generateError)) {
+        throw generateError;
+      }
+
+      console.warn('[API/Chat] Retrying without memory after malformed updateWorkingMemory tool arguments.');
+      result = await masterAgent(stage, { disableMemory: true }).generate(enrichedMessage, {
+        threadId: sessionId,
+        resourceId: sessionId,
+      });
+    }
     
     console.log('[API/Chat] Raw LLM text response:', JSON.stringify(result.text));
 
