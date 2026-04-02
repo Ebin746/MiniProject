@@ -1,10 +1,11 @@
 'use client';
-import ReactMarkdown from 'react-markdown';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
 import { useState, useEffect, useRef } from 'react';
 import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
 
 interface Message {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   ocrPreview?: OCRPreview;
@@ -14,6 +15,31 @@ interface OCRPreview {
   fileName: string;
   imageUrl: string;
   fields: Array<{ label: string; value: string }>;
+}
+
+function normalizePdfHref(rawHref: string): string {
+  if (!rawHref) return rawHref;
+
+  try {
+    const url = rawHref.startsWith('http')
+      ? new URL(rawHref)
+      : new URL(rawHref, window.location.origin);
+
+    if (url.pathname === '/pdfs/loan_done') {
+      const fullUrl = url.searchParams.get('fullUrl');
+      if (fullUrl) {
+        return decodeURIComponent(fullUrl);
+      }
+    }
+
+    if (rawHref.startsWith('/pdfs/')) {
+      return `${window.location.origin}${rawHref}`;
+    }
+
+    return rawHref;
+  } catch {
+    return rawHref;
+  }
 }
 
 function parseExtractedFields(text: string): Array<{ label: string; value: string }> {
@@ -46,6 +72,8 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<string[]>([]);
+
+  const createMessageId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   useEffect(() => {
     checkAuth();
@@ -94,7 +122,7 @@ export default function Home() {
 
     if (!overrideMessage) setInput('');
     if (!options?.hideUserEcho) {
-      setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+      setMessages((prev) => [...prev, { id: createMessageId(), role: 'user', content: userMessage }]);
     }
     setLoading(true);
 
@@ -108,16 +136,16 @@ export default function Home() {
       const data = await response.json();
       console.log(data);
       if (data.error) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
+        setMessages((prev) => [...prev, { id: createMessageId(), role: 'assistant', content: `Error: ${data.error}` }]);
       } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
+        setMessages((prev) => [...prev, { id: createMessageId(), role: 'assistant', content: data.response }]);
         setStage(data.session.stage);
         if (data.pdfPath) {
           setPdfPath(data.pdfPath);
         }
       }
-    } catch (error) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }]);
+    } catch {
+      setMessages((prev) => [...prev, { id: createMessageId(), role: 'assistant', content: 'Connection error. Please try again.' }]);
     } finally {
       setLoading(false);
     }
@@ -142,11 +170,12 @@ export default function Home() {
       const data = await res.json();
 
       if (data.text) {
-        // 2. Insert compact OCR summary as a user message, then send structured text silently
+        // 2. Insert OCR preview as a normal chat message so timeline order stays intact
         previewUrlsRef.current.push(imageUrl);
         setMessages((prev) => [
           ...prev,
           {
+            id: createMessageId(),
             role: 'user',
             content: '',
             ocrPreview: {
@@ -255,13 +284,13 @@ export default function Home() {
           </div>
         )}
 
-        {messages.map((msg, i) => (
+        {messages.map((msg) => (
           <div
-            key={i}
+            key={msg.id}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
           >
             {msg.ocrPreview ? (
-              <div className="w-64 rounded-2xl border border-zinc-200/80 bg-white/90 p-2 shadow-md">
+              <div className="w-64 rounded-2xl border border-zinc-200/80 bg-white/90 p-2 shadow-md shrink-0">
                 <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
                   <Image
                     src={msg.ocrPreview.imageUrl}
@@ -300,11 +329,8 @@ export default function Home() {
                   <ReactMarkdown
                     components={{
                       a: ({ ...props }) => {
-                        // Auto-prepend base URL for relative PDF links
                         const href = props.href || '';
-                        const fullHref = href.startsWith('/pdfs/')
-                          ? `${window.location.origin}${href}`
-                          : href;
+                        const fullHref = normalizePdfHref(href);
 
                         return (
                           <a

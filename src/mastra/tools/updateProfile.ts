@@ -3,15 +3,16 @@ import { z } from 'zod';
 
 export const updateProfile = createTool({
     id: 'updateProfile',
-    description: 'Update the user profile with any confirmed user details. Only pass fields that have actual values.',
+    description: 'Update any confirmed user profile details. Supports partial updates (name-only, income-only, or both).',
     inputSchema: z.object({
-        name: z.string().nullable().optional().describe('Full name.'),
-        income: z.union([z.number(), z.string()]).nullable().optional().describe('Monthly income.'),
-
+        name: z.string().describe('Full name.'),
+        income: z.union([z.number(), z.string()]).describe('Monthly income.'),
+    }).partial().refine((data) => Object.keys(data).length > 0, {
+        message: 'At least one profile field is required.',
     }),
     execute: async ({ context }) => {
         const filtered = Object.fromEntries(
-            Object.entries(context).filter(([_, v]) => v !== null && v !== undefined && v !== '')
+            Object.entries(context).filter(([, v]) => v !== null && v !== undefined && v !== '')
         );
         return { ...filtered, message: 'Profile updated successfully' };
     }

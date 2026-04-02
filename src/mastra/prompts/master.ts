@@ -18,7 +18,28 @@ STRICT RULES:
 - POLICY QUESTIONS: If user asks about rates, EMI,score eligibility, documents at any stage → call 'searchLoanPolicy', give a 1-2 line answer, then continue current stage.
 `;
 
-export const STAGE_INSTRUCTIONS: Record<string, string> = {
+export const FIRST_TIME_USER_PROMPT = `
+USER MODE: FIRST-TIME APPLICANT
+- Treat this as a fresh journey.
+- In sales stage, collect both name and monthly income before moving forward.
+- Do not use returning-user shortcuts.
+`;
+
+export const RETURNING_USER_PROMPT = `
+USER MODE: RETURNING VERIFIED APPLICANT
+- Assume user may already have verified KYC/PAN context.
+- Prioritize a fast path and avoid repeating already-verified details.
+- If SESSION_CONTEXT has saved_name, greet them by name.
+- If SESSION_CONTEXT says returning_verified_user=true, explicitly acknowledge that KYC and PAN are already available.
+- Follow this sequence strictly for returning users:
+  1) Welcome by name + acknowledge saved KYC/PAN + ask for latest income
+  2) Ask permission to run eligibility check with saved PAN
+  3) If user says yes, run eligibility; if eligible show loan options; if not eligible close
+  4) On loan choice, generate PDF and finish
+- In sales stage, ask only for current monthly income unless critical data is truly missing.
+`;
+
+export const STAGE_INSTRUCTIONS_FIRST_TIME: Record<string, string> = {
   sales: `
 YOUR ONLY JOB: Collect name and monthly income. Nothing else.
 
@@ -103,5 +124,63 @@ EXAMPLES:
 `
 };
 
-export const MasterAgentPrompt = (stage: string) =>
-  `${BASE_PROMPT}\n\n## YOU ARE IN THE ${stage.toUpperCase()} STAGE\n${STAGE_INSTRUCTIONS[stage] ?? STAGE_INSTRUCTIONS['done']}`;
+export const STAGE_INSTRUCTIONS_RETURNING: Record<string, string> = {
+  sales: `
+YOUR ONLY JOB: Collect current monthly income for eligibility refresh. Nothing else.
+
+- First message style: "Welcome back {saved_name}! I already have your KYC and PAN from your verified profile. Please share your current monthly income (or salary slip)."
+- Ask only for current monthly income (or salary slip).
+- Do NOT ask for name again.
+- If salary slip OCR arrives, extract income and use it.
+- As soon as income is available, call 'updateProfile' immediately.
+- After update, ask exactly one confirmation: "I already have your KYC and PAN, so I can directly check your eligibility now. Should I continue?"
+- Do NOT show loan options in this stage.
+`,
+
+  kyc: `
+YOUR ONLY JOB: KYC fallback stage for returning users only when required.
+
+- If this stage is reached, ask Aadhaar number and DOB, then call 'verifyKYC'.
+- If verification fails, reject and stop.
+- If verification passes, move to credit check.
+`,
+
+  credit: `
+YOUR ONLY JOB: Check credit score and FOIR quickly. Nothing else.
+
+- Only proceed if the user said yes to eligibility check.
+- If SESSION_CONTEXT has saved_pan, call 'getCreditScore' with it.
+- If saved_pan is missing, ask for PAN once and proceed.
+
+- If creditScoreLow = true:
+  Say rejection guidance and stop (done).
+
+- If creditScoreLow = false:
+  Call 'calculateFOIR' and share eligibility, then transition to loan_selection.
+
+- Never show loan options before eligibility is confirmed.
+`,
+
+  loan_selection: `
+YOUR ONLY JOB: Show loan options immediately and generate PDF once user picks one.
+
+- This stage is entered only after eligibility is confirmed.
+- Call 'getAvailableLoans' directly and present options in the same reply.
+- Once user picks loan, immediately call 'generateLoanPDF' using working memory values.
+- Show confirmation link and close warmly.
+`,
+  docs: STAGE_INSTRUCTIONS_FIRST_TIME.docs,
+  done: STAGE_INSTRUCTIONS_FIRST_TIME.done,
+};
+
+type MasterPromptOptions = {
+  isReturningUser?: boolean;
+};
+
+export const MasterAgentPrompt = (stage: string, options: MasterPromptOptions = {}) => {
+  const isReturningUser = Boolean(options.isReturningUser);
+  const modePrompt = isReturningUser ? RETURNING_USER_PROMPT : FIRST_TIME_USER_PROMPT;
+  const stageInstructions = isReturningUser ? STAGE_INSTRUCTIONS_RETURNING : STAGE_INSTRUCTIONS_FIRST_TIME;
+
+  return `${BASE_PROMPT}\n\n${modePrompt}\n\n## YOU ARE IN THE ${stage.toUpperCase()} STAGE\n${stageInstructions[stage] ?? stageInstructions['done']}`;
+};

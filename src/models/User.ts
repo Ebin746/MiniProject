@@ -18,6 +18,52 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Please provide a password'],
     },
+    profile: {
+        monthlyIncome: {
+            type: Number,
+            default: null,
+        },
+    },
+    documents: {
+        aadhaarNo: {
+            type: String,
+            default: null,
+        },
+        dob: {
+            type: String,
+            default: null,
+        },
+        pan: {
+            type: String,
+            default: null,
+        },
+    },
+    verification: {
+        hasVerifiedKyc: {
+            type: Boolean,
+            default: false,
+        },
+        hasVerifiedPan: {
+            type: Boolean,
+            default: false,
+        },
+        eligibleApproved: {
+            type: Boolean,
+            default: false,
+        },
+        lastCreditScore: {
+            type: Number,
+            default: null,
+        },
+        lastFoir: {
+            type: Number,
+            default: null,
+        },
+        lastEligibleAt: {
+            type: Date,
+            default: null,
+        },
+    },
 
 
 }, { timestamps: true });
