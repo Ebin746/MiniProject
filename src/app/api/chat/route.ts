@@ -148,7 +148,10 @@ export async function POST(req: Request) {
 
       const rememberedStage = parseStage(getWorkingMemoryField(rememberedWorkingMemory, "Current Stage"));
       if (rememberedStage) {
-        session.stage = rememberedStage;
+        // New sessions should not resume from terminal/late stages for returning users.
+        session.stage = (rememberedStage === "loan_selection" || rememberedStage === "docs" || rememberedStage === "done")
+          ? "sales"
+          : rememberedStage;
       }
 
       const rememberedName = getWorkingMemoryField(rememberedWorkingMemory, "Name");

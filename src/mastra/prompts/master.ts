@@ -31,7 +31,11 @@ USER MODE: RETURNING VERIFIED APPLICANT
 - Prioritize a fast path and avoid repeating already-verified details.
 - If SESSION_CONTEXT has saved_name, greet them by name.
 - If SESSION_CONTEXT says returning_verified_user=true, explicitly acknowledge that KYC and PAN are already available.
-- In returning flow, avoid redundant confirmations. Move directly where data is already available.
+- Follow this sequence strictly for returning users:
+  1) Welcome by name + acknowledge saved KYC/PAN + ask for latest income
+  2) Ask permission to run eligibility check with saved PAN
+  3) If user says yes, run eligibility; if eligible show loan options; if not eligible close
+  4) On loan choice, generate PDF and finish
 - In sales stage, ask only for current monthly income unless critical data is truly missing.
 `;
 
@@ -124,12 +128,13 @@ export const STAGE_INSTRUCTIONS_RETURNING: Record<string, string> = {
   sales: `
 YOUR ONLY JOB: Collect current monthly income for eligibility refresh. Nothing else.
 
-- First message style: "Welcome back {saved_name}! I already have your KYC and PAN from your verified profile. Please share your current monthly income (or salary slip) so I can directly check eligibility."
+- First message style: "Welcome back {saved_name}! I already have your KYC and PAN from your verified profile. Please share your current monthly income (or salary slip)."
 - Ask only for current monthly income (or salary slip).
 - Do NOT ask for name again.
 - If salary slip OCR arrives, extract income and use it.
 - As soon as income is available, call 'updateProfile' immediately.
-- After update, move directly to credit check flow. Do not ask extra confirmation questions.
+- After update, ask exactly one confirmation: "I already have your KYC and PAN, so I can directly check your eligibility now. Should I continue?"
+- Do NOT show loan options in this stage.
 `,
 
   kyc: `
@@ -143,21 +148,23 @@ YOUR ONLY JOB: KYC fallback stage for returning users only when required.
   credit: `
 YOUR ONLY JOB: Check credit score and FOIR quickly. Nothing else.
 
-- Do NOT ask permission/confirmation for PAN check in returning flow.
-- If SESSION_CONTEXT has saved_pan, call 'getCreditScore' immediately with it.
+- Only proceed if the user said yes to eligibility check.
+- If SESSION_CONTEXT has saved_pan, call 'getCreditScore' with it.
 - If saved_pan is missing, ask for PAN once and proceed.
 
 - If creditScoreLow = true:
-  Say rejection guidance and stop.
+  Say rejection guidance and stop (done).
 
 - If creditScoreLow = false:
   Call 'calculateFOIR' and share eligibility, then transition to loan_selection.
+
+- Never show loan options before eligibility is confirmed.
 `,
 
   loan_selection: `
 YOUR ONLY JOB: Show loan options immediately and generate PDF once user picks one.
 
-- Do NOT ask "Want to see options?" in returning flow.
+- This stage is entered only after eligibility is confirmed.
 - Call 'getAvailableLoans' directly and present options in the same reply.
 - Once user picks loan, immediately call 'generateLoanPDF' using working memory values.
 - Show confirmation link and close warmly.
