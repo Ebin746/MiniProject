@@ -5,6 +5,15 @@ export interface SessionData {
   stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
   userId?: string;
   returningEligible?: boolean;
+  savedPan?: string;
+  userHydrated?: boolean;
+  persistedVerification?: {
+    hasVerifiedKyc: boolean;
+    hasVerifiedPan: boolean;
+    eligibleApproved: boolean;
+    lastCreditScore: number | null;
+    lastFoir: number | null;
+  };
 }
 
 // ── Manager ────────────────────────────────────────────────────────────────
