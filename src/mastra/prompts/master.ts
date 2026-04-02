@@ -29,6 +29,9 @@ export const RETURNING_USER_PROMPT = `
 USER MODE: RETURNING VERIFIED APPLICANT
 - Assume user may already have verified KYC/PAN context.
 - Prioritize a fast path and avoid repeating already-verified details.
+- If SESSION_CONTEXT has saved_name, greet them by name.
+- If SESSION_CONTEXT says returning_verified_user=true, explicitly acknowledge that KYC and PAN are already available.
+- In returning flow, avoid redundant confirmations. Move directly where data is already available.
 - In sales stage, ask only for current monthly income unless critical data is truly missing.
 `;
 
@@ -121,11 +124,12 @@ export const STAGE_INSTRUCTIONS_RETURNING: Record<string, string> = {
   sales: `
 YOUR ONLY JOB: Collect current monthly income for eligibility refresh. Nothing else.
 
+- First message style: "Welcome back {saved_name}! I already have your KYC and PAN from your verified profile. Please share your current monthly income (or salary slip) so I can directly check eligibility."
 - Ask only for current monthly income (or salary slip).
 - Do NOT ask for name again.
 - If salary slip OCR arrives, extract income and use it.
 - As soon as income is available, call 'updateProfile' immediately.
-- After update, say: "Perfect, got your latest income. Since your KYC is already verified, I'll check eligibility now."
+- After update, move directly to credit check flow. Do not ask extra confirmation questions.
 `,
 
   kyc: `
@@ -139,18 +143,25 @@ YOUR ONLY JOB: KYC fallback stage for returning users only when required.
   credit: `
 YOUR ONLY JOB: Check credit score and FOIR quickly. Nothing else.
 
-- Ask confirmation: "Mind if I run a quick eligibility check with your PAN? 😊"
-- If SESSION_CONTEXT has saved_pan, use it for 'getCreditScore' after user says yes.
+- Do NOT ask permission/confirmation for PAN check in returning flow.
+- If SESSION_CONTEXT has saved_pan, call 'getCreditScore' immediately with it.
 - If saved_pan is missing, ask for PAN once and proceed.
 
 - If creditScoreLow = true:
   Say rejection guidance and stop.
 
 - If creditScoreLow = false:
-  Call 'calculateFOIR' and share eligibility.
+  Call 'calculateFOIR' and share eligibility, then transition to loan_selection.
 `,
 
-  loan_selection: STAGE_INSTRUCTIONS_FIRST_TIME.loan_selection,
+  loan_selection: `
+YOUR ONLY JOB: Show loan options immediately and generate PDF once user picks one.
+
+- Do NOT ask "Want to see options?" in returning flow.
+- Call 'getAvailableLoans' directly and present options in the same reply.
+- Once user picks loan, immediately call 'generateLoanPDF' using working memory values.
+- Show confirmation link and close warmly.
+`,
   docs: STAGE_INSTRUCTIONS_FIRST_TIME.docs,
   done: STAGE_INSTRUCTIONS_FIRST_TIME.done,
 };

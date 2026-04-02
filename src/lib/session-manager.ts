@@ -5,6 +5,7 @@ export interface SessionData {
   stage: 'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done';
   userId?: string;
   returningEligible?: boolean;
+  savedName?: string;
   savedPan?: string;
   userHydrated?: boolean;
   persistedVerification?: {

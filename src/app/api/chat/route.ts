@@ -67,6 +67,21 @@ function getWorkingMemoryField(workingMemory: string | null, label: string): str
   return match?.[1]?.trim() || "";
 }
 
+function parseStage(value: string): "sales" | "kyc" | "credit" | "loan_selection" | "docs" | "done" | null {
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "sales" ||
+    normalized === "kyc" ||
+    normalized === "credit" ||
+    normalized === "loan_selection" ||
+    normalized === "docs" ||
+    normalized === "done"
+  ) {
+    return normalized;
+  }
+  return null;
+}
+
 function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | null): string {
   if (!generatedPdfPath) return reply;
 
@@ -77,6 +92,15 @@ function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | null): st
   // If the model renders a broken markdown link like (http://) or empty target,
   // force the known generated PDF URL for the download anchor text.
   return patched.replace(/\[\s*Download\s+your\s+PDF\s*\]\([^)]*\)/gi, `[Download your PDF](${generatedPdfPath})`);
+}
+
+function setWorkingMemoryField(workingMemory: string, label: string, value: string): string {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const fieldRegex = new RegExp(`(-\\s*${escapedLabel}\\s*:\\s*).*$`, "im");
+  if (fieldRegex.test(workingMemory)) {
+    return workingMemory.replace(fieldRegex, `$1${value}`);
+  }
+  return workingMemory;
 }
 
 export async function POST(req: Request) {
@@ -122,6 +146,16 @@ export async function POST(req: Request) {
         resourceId: session.userId,
       });
 
+      const rememberedStage = parseStage(getWorkingMemoryField(rememberedWorkingMemory, "Current Stage"));
+      if (rememberedStage) {
+        session.stage = rememberedStage;
+      }
+
+      const rememberedName = getWorkingMemoryField(rememberedWorkingMemory, "Name");
+      if (rememberedName) {
+        session.savedName = rememberedName;
+      }
+
       const rememberedPan = getWorkingMemoryField(rememberedWorkingMemory, "PAN Card").toUpperCase();
       const rememberedKycStatus = getWorkingMemoryField(rememberedWorkingMemory, "KYC Status").toLowerCase();
       const hasRememberedVerification = Boolean(rememberedPan) && rememberedKycStatus === "verified";
@@ -133,8 +167,12 @@ export async function POST(req: Request) {
       } else {
         await dbConnect();
         const userDoc = await User.findById(session.userId)
-          .select("verification documents.pan")
+          .select("name verification documents.pan")
           .lean();
+
+        if (typeof userDoc?.name === "string" && userDoc.name.trim()) {
+          session.savedName = userDoc.name.trim();
+        }
 
         let returningEligible = Boolean(
           userDoc?.verification?.eligibleApproved &&
@@ -174,6 +212,7 @@ export async function POST(req: Request) {
     }
 
     const returningEligible = Boolean(session.returningEligible);
+    const savedName = session.savedName || "";
     const savedPan = session.savedPan || "";
 
     const stage = session.stage || 'sales';
@@ -182,12 +221,14 @@ export async function POST(req: Request) {
 
     const enrichedMessage = [
       `SESSION_CONTEXT: returning_verified_user=${returningEligible ? "true" : "false"}`,
+      `SESSION_CONTEXT: saved_name=${savedName}`,
       `SESSION_CONTEXT: current_stage=${stage}`,
       `SESSION_CONTEXT: saved_pan=${savedPan || ""}`,
       message,
     ].join("\n");
 
     let result;
+    let usedNoMemoryRetry = false;
     try {
       result = await masterAgent(stage, { isReturningUser: returningEligible }).generate(enrichedMessage, {
         threadId: sessionId,
@@ -206,12 +247,13 @@ export async function POST(req: Request) {
         threadId: sessionId,
         resourceId: session.userId,
       });
+      usedNoMemoryRetry = true;
     }
     
     console.log('[API/Chat] Raw LLM text response:', JSON.stringify(result.text));
 
     // Get working memory (facts the agent remembers)
-    const workingMemory = await memory.getWorkingMemory({
+    let workingMemory = await memory.getWorkingMemory({
       threadId: sessionId,
       resourceId: session.userId,
     });
@@ -242,6 +284,22 @@ export async function POST(req: Request) {
 
     // 2. Persist session
     sessionManager.saveSession(session);
+
+    // Keep stage consistent in memory when generation had to retry without memory tools.
+    if (usedNoMemoryRetry && typeof workingMemory === 'string') {
+      const memoryStage = getWorkingMemoryField(workingMemory, 'Current Stage').toLowerCase();
+      const sessionStage = session.stage.toLowerCase();
+
+      if (memoryStage !== sessionStage) {
+        const nextWorkingMemory = setWorkingMemoryField(workingMemory, 'Current Stage', session.stage);
+        await memory.updateWorkingMemory({
+          threadId: sessionId,
+          resourceId: session.userId,
+          workingMemory: nextWorkingMemory,
+        });
+        workingMemory = nextWorkingMemory;
+      }
+    }
 
     // 3. Resolve clean text reply
     let cleanReply = resolveReply(result);
