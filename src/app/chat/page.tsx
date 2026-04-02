@@ -3,6 +3,7 @@ import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { useState, useEffect, useRef } from 'react';
 import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
+import { clearAuthMeCache, getAuthMe, type AuthMeUser } from '@/lib/client-auth';
 
 interface Message {
   id: string;
@@ -60,7 +61,7 @@ function parseExtractedFields(text: string): Array<{ label: string; value: strin
 }
 
 export default function Home() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthMeUser | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [sessionId, setSessionId] = useState('');
   const [input, setInput] = useState('');
@@ -82,11 +83,8 @@ export default function Home() {
 
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      }
+      const result = await getAuthMe();
+      setUser(result.user);
     } catch (error) {
       console.error('Auth check failed:', error);
     } finally {
@@ -97,6 +95,7 @@ export default function Home() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      clearAuthMeCache();
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
@@ -277,9 +276,9 @@ export default function Home() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">👋</div>
-            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {user.name.split(' ')[0]}!</h2>
+            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {(user.name || 'User').split(' ')[0]}!</h2>
             <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-              I'm your Loan Assistant. I can help you check your loan eligibility in minutes. Let's start with your basic details.
+              I&apos;m your Loan Assistant. I can help you check your loan eligibility in minutes. Let&apos;s start with your basic details.
             </p>
           </div>
         )}

@@ -3,12 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import  Link  from "next/link";
 import { Moon, Sun } from 'lucide-react';
+import { getAuthMe, type AuthMeUser } from '@/lib/client-auth';
 
-type AuthUser = {
-  userId?: string;
-  name?: string;
-  email?: string;
-};
+type AuthUser = AuthMeUser;
 
 const LandingPage = () => {
   const [isDark, setIsDark] = useState(() => {
@@ -24,19 +21,9 @@ const LandingPage = () => {
     }
 
     const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user || null);
-        } else {
-          setUser(null);
-        }
-      } catch {
-        setUser(null);
-      } finally {
-        setAuthChecking(false);
-      }
+      const result = await getAuthMe();
+      setUser(result.user);
+      setAuthChecking(false);
     };
 
     checkAuth();
