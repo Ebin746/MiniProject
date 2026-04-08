@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit/js/pdfkit.standalone';
 import fs from 'fs';
 import path from 'path';
 
+
 export const generateLoanPDF = createTool({
     id: 'generateLoanPDF',
     description: 'Generate a PDF document for loan confirmation with user and loan details.',
