@@ -50,13 +50,9 @@ function getToolInput(tr: unknown): Record<string, unknown> {
 }
 
 export function processToolResults(session: SessionData, toolResults: unknown[]): void {
-  toolResults.forEach((tr: unknown, i) => {
-    const row = asRecord(tr);
-    const payload = asRecord(row.payload ?? row);
-    const tName = payload.toolName || row.toolName || row.name || 'unknown';
-    const toolRes = asRecord(payload.result ?? row.result);
-
-    console.log(`Processing tool [${i}]: ${String(tName)}`);
+  toolResults.forEach((tr: unknown) => {
+    const tName = getToolName(tr);
+    const toolRes = getToolResult(tr);
 
     if (tName === 'updateProfile') {
       if (session.stage === 'sales') {
