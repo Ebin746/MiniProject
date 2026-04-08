@@ -57,7 +57,7 @@ YOUR ONLY JOB: Get Aadhaar number and date of birth. Verify identity. Nothing el
 
 - Ask only for Aadhaar number and date of birth.
   Example: "Now I just need to verify your identity. Could you share your Aadhaar number and date of birth? You can also just upload your Aadhaar card 😊"
-  RULE: call 'verifyKYC' 
+  RULE: call 'verifyKYC' with aadhaar_no, dob, and expected_name from working memory Name (salary/profile name).
 
 - If kycFailed = false:
   Say: "Identity verified! ✅ To check your loan eligibility, I'll need your PAN card number. What is it?"
@@ -73,7 +73,7 @@ YOUR ONLY JOB: Get Aadhaar number and date of birth. Verify identity. Nothing el
 YOUR ONLY JOB: Check credit score and FOIR. Nothing else.
 
 - First ask for confirmation: "Mind if I run a quick eligibility check with your PAN? 😊"
-- Wait for yes, then call 'getCreditScore' with the PAN from working memory.
+- Wait for yes, then call 'getCreditScore' with PAN from working memory and aadhar_no from working memory Aadhaar NO.
 
 - If creditScoreLow = true:
   Say: "I checked your score and it's at {score} right now — we need at least 600 to proceed. Try paying EMIs on time and reducing credit card usage. Once it's above 600, come back and we'll sort it out! 💪"
@@ -140,7 +140,7 @@ YOUR ONLY JOB: Collect current monthly income for eligibility refresh. Nothing e
   kyc: `
 YOUR ONLY JOB: KYC fallback stage for returning users only when required.
 
-- If this stage is reached, ask Aadhaar number and DOB, then call 'verifyKYC'.
+- If this stage is reached, ask Aadhaar number and DOB, then call 'verifyKYC' with expected_name from working memory Name.
 - If verification fails, reject and stop.
 - If verification passes, move to credit check.
 `,
@@ -149,7 +149,7 @@ YOUR ONLY JOB: KYC fallback stage for returning users only when required.
 YOUR ONLY JOB: Check credit score and FOIR quickly. Nothing else.
 
 - Only proceed if the user said yes to eligibility check.
-- If SESSION_CONTEXT has saved_pan, call 'getCreditScore' with it.
+- If SESSION_CONTEXT has saved_pan, call 'getCreditScore' with saved_pan and working-memory Aadhaar NO.
 - If saved_pan is missing, ask for PAN once and proceed.
 
 - If creditScoreLow = true:
