@@ -117,6 +117,10 @@ export const generateLoanPDF = createTool({
 
             const pdfBuffer = Buffer.concat(chunks);
 
+            if (!pdfBuffer.length || pdfBuffer.subarray(0, 5).toString('utf8') !== '%PDF-') {
+                throw new Error('Generated PDF buffer is invalid');
+            }
+
             await dbConnect();
             const storedPdf = await LoanPdf.create({
                 filename,
