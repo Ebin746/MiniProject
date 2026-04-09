@@ -61,10 +61,7 @@ export async function GET(
       return NextResponse.json({ error: 'Stored PDF is empty or invalid' }, { status: 500 });
     }
 
-    const body = contentBuffer.buffer.slice(
-      contentBuffer.byteOffset,
-      contentBuffer.byteOffset + contentBuffer.byteLength,
-    );
+    const body = new Uint8Array([...contentBuffer]);
 
     return new NextResponse(body, {
       status: 200,
