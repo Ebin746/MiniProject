@@ -175,6 +175,21 @@ export async function POST(req: Request) {
     let cleanReply = resolveReply(result);
     const generatedPdfPath = result.toolResults ? extractPdfPath(result.toolResults) : null;
 
+    const latestPdfToolFailure = Array.isArray(result.toolResults)
+      ? [...result.toolResults].reverse().find((toolResult) => {
+          const row = asRecord(toolResult);
+          const payload = asRecord(row.payload);
+          const toolName = String(payload.toolName || row.toolName || row.name || '');
+          if (toolName !== 'generateLoanPDF') return false;
+          const toolRes = asRecord(payload.result ?? row.result);
+          return toolRes.success === false;
+        })
+      : null;
+
+    if (latestPdfToolFailure) {
+      cleanReply = "I'm sorry, I encountered a small technical issue while generating your document. Could you please select the loan option once more so I can retry right away?";
+    }
+
     if (typeof cleanReply === 'string') {
       cleanReply = patchBrokenPdfLinks(cleanReply, generatedPdfPath);
     }

@@ -1,8 +1,8 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import PDFDocument from 'pdfkit/js/pdfkit.standalone';
-import fs from 'fs';
-import path from 'path';
+import dbConnect from '../../lib/mongodb';
+import LoanPdf from '../../models/LoanPdf';
 
 
 export const generateLoanPDF = createTool({
@@ -36,21 +36,22 @@ export const generateLoanPDF = createTool({
         const interestRate = parseValue(context.interestRate);
 
         try {
-            // Create PDF directory if it doesn't exist
-            const pdfDir = path.join(process.cwd(), 'public', 'pdfs');
-            if (!fs.existsSync(pdfDir)) {
-                fs.mkdirSync(pdfDir, { recursive: true });
-            }
-
             // Generate unique filename
             const timestamp = Date.now();
             const filename = `loan_confirmation_${name.replace(/\s+/g, '_')}_${timestamp}.pdf`;
-            const filepath = path.join(pdfDir, filename);
 
-            // Create PDF
+            // Create PDF in memory (Vercel-safe; no runtime filesystem writes)
             const doc = new PDFDocument({ margin: 50 });
-            const stream = fs.createWriteStream(filepath);
-            doc.pipe(stream);
+            const chunks: Buffer[] = [];
+
+            doc.on('data', (chunk: Uint8Array) => {
+                chunks.push(Buffer.from(chunk));
+            });
+
+            const pdfDone = new Promise<void>((resolve, reject) => {
+                doc.on('end', () => resolve());
+                doc.on('error', reject);
+            });
 
             // Header
             doc.fontSize(24)
@@ -112,23 +113,31 @@ export const generateLoanPDF = createTool({
             // Finalize PDF
             doc.end();
 
-            // Wait for the PDF to be written
-            await new Promise((resolve, reject) => {
-                stream.on('finish', () => resolve(true));
-                stream.on('error', reject);
+            await pdfDone;
+
+            const pdfBuffer = Buffer.concat(chunks);
+
+            if (!pdfBuffer.length || pdfBuffer.subarray(0, 5).toString('utf8') !== '%PDF-') {
+                throw new Error('Generated PDF buffer is invalid');
+            }
+
+            await dbConnect();
+            const storedPdf = await LoanPdf.create({
+                filename,
+                mimeType: 'application/pdf',
+                content: pdfBuffer,
             });
 
             // Generate full URL based on environment
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                (process.env.NODE_ENV === 'production'
-                    ? 'https://yourdomain.com'
-                    : 'http://localhost:3000');
-            const fullPdfUrl = `${baseUrl}/pdfs/${filename}`;
+            const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || vercelUrl || 'http://localhost:3000';
+            const fullPdfUrl = `${baseUrl}/api/pdfs/${String(storedPdf._id)}`;
 
             return {
                 success: true,
-                pdfPath: `/pdfs/${filename}`,
+                pdfPath: fullPdfUrl,
                 fullUrl: fullPdfUrl,
+                downloadUrl: fullPdfUrl,
                 filename: filename,
                 message: `PDF generated successfully! [Download Loan Confirmation PDF](${fullPdfUrl})`
             };
