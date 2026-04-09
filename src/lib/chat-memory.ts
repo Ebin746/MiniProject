@@ -1,5 +1,4 @@
 import { SessionData } from './session-manager';
-import { encryptField } from './field-encryption';
 
 type LooseToolResult = {
   payload?: Record<string, unknown>;
@@ -104,7 +103,7 @@ export function buildUserPersistenceUpdates(
       updates['verification.hasVerifiedKyc'] = true;
 
       if (typeof toolInput.aadhar_no === 'string') {
-        updates['documents.aadhaarNo'] = encryptField(toolInput.aadhar_no.replace(/\s/g, ''));
+        updates['documents.aadhaarNo'] = toolInput.aadhar_no.replace(/\s/g, '');
       }
       if (typeof toolInput.dob === 'string') {
         updates['documents.dob'] = toolInput.dob.trim();
@@ -116,7 +115,7 @@ export function buildUserPersistenceUpdates(
         nextState.hasVerifiedPan = true;
         updates['verification.hasVerifiedPan'] = true;
         if (typeof toolInput.pan === 'string') {
-          updates['documents.pan'] = encryptField(toolInput.pan.trim().toUpperCase());
+          updates['documents.pan'] = toolInput.pan.trim().toUpperCase();
         }
       }
 
