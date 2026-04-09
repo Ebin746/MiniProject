@@ -79,11 +79,34 @@ export function parseStage(value: string): ChatStage | null {
 export function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | null): string {
   if (!generatedPdfPath) return reply;
 
-  const patched = reply
+  const downloadLabel = 'Download your PDF';
+
+  let patched = reply
     .replace(/\((?:https?:\/\/[^)\s]+)?\/pdfs\/loan_done[^)]*\)/gi, `(${generatedPdfPath})`)
     .replace(/\b(?:https?:\/\/[^\s]+)?\/pdfs\/loan_done\S*/gi, generatedPdfPath);
 
-  return patched.replace(/\[\s*Download\s+your\s+PDF\s*\]\([^)]*\)/gi, `[Download your PDF](${generatedPdfPath})`);
+  // Normalize any existing markdown PDF links to a single label/path.
+  patched = patched.replace(
+    /\[[^\]]*\]\(((?:https?:\/\/[^)\s]+)?\/pdfs\/[^)\s]+\.pdf(?:\?[^)\s]*)?)\)/gi,
+    `[${downloadLabel}](${generatedPdfPath})`
+  );
+
+  // Convert bare PDF URLs to markdown links (common with some models).
+  patched = patched.replace(
+    /(^|[\s:])((?:https?:\/\/[^\s)]+)?\/pdfs\/[^\s)]+\.pdf(?:\?[^\s)]*)?)([.,!?])?(?=\s|$)/gi,
+    (_match, prefix: string, url: string, trailingPunctuation?: string) => {
+      const safePrefix = prefix || '';
+      const safeTrailing = trailingPunctuation || '';
+      return `${safePrefix}[${downloadLabel}](${url})${safeTrailing}`;
+    }
+  );
+
+  const hasDownloadLink = /\[\s*Download\s+your\s+PDF\s*\]\([^)]*\)/i.test(patched);
+  if (!hasDownloadLink) {
+    patched = `${patched.trim()}\n\n[${downloadLabel}](${generatedPdfPath})`;
+  }
+
+  return patched;
 }
 
 export function setWorkingMemoryField(workingMemory: string, label: string, value: string): string {

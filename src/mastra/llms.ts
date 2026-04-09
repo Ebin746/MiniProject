@@ -2,8 +2,6 @@
 export const PRIMARY_MODEL = 'google/gemini-3.1-flash-lite-preview';
 
 //export const PRIMARY_MODEL = 'google/gemini-3-flash-preview';
-//export const PRIMARY_MODEL = 'google/gemini-2.5-pro';
-//export const PRIMARY_MODEL = 'google/gemini-2.5-flash';
 //export const PRIMARY_MODEL = 'google/gemini-2.5-flash-lite';
 
 
