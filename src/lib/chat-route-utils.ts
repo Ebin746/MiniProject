@@ -77,7 +77,11 @@ export function parseStage(value: string): ChatStage | null {
 }
 
 export function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | null): string {
-  if (!generatedPdfPath) return reply;
+  if (!generatedPdfPath) {
+    return reply
+      .replace(/\[[^\]]*\]\(https?:\/\/(?:www\.)?example\.com\/[^)]*\.pdf[^)]*\)/gi, 'download link unavailable')
+      .replace(/https?:\/\/(?:www\.)?example\.com\/[^\s)]*\.pdf\b/gi, 'download link unavailable');
+  }
 
   const downloadLabel = 'Download your PDF';
 
@@ -94,10 +98,10 @@ export function patchBrokenPdfLinks(reply: string, generatedPdfPath: string | nu
   // Convert bare PDF URLs to markdown links (common with some models).
   patched = patched.replace(
     /(^|[\s:])((?:https?:\/\/[^\s)]+)?\/pdfs\/[^\s)]+\.pdf(?:\?[^\s)]*)?)([.,!?])?(?=\s|$)/gi,
-    (_match, prefix: string, url: string, trailingPunctuation?: string) => {
+    (_match, prefix: string, _url: string, trailingPunctuation?: string) => {
       const safePrefix = prefix || '';
       const safeTrailing = trailingPunctuation || '';
-      return `${safePrefix}[${downloadLabel}](${url})${safeTrailing}`;
+      return `${safePrefix}[${downloadLabel}](${generatedPdfPath})${safeTrailing}`;
     }
   );
 

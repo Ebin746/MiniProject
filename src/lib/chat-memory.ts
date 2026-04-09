@@ -148,6 +148,9 @@ export function extractPdfPath(toolResults: unknown[]): string | null {
     if (toolName !== 'generateLoanPDF') continue;
 
     const toolResult = getToolResult(toolResults[i]);
+    if (typeof toolResult.downloadUrl === 'string' && toolResult.downloadUrl.trim()) {
+      return toolResult.downloadUrl.trim();
+    }
     if (typeof toolResult.fullUrl === 'string' && toolResult.fullUrl.trim()) {
       return toolResult.fullUrl.trim();
     }
