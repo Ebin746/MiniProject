@@ -6,7 +6,7 @@ export const updateProfile = createTool({
     description: 'Update any confirmed user profile details. Supports partial updates (name-only, income-only, or both).',
     inputSchema: z.object({
         name: z.string().describe('Full name.'),
-        income: z.union([z.number(), z.string()]).describe('Monthly income.'),
+        income: z.string().describe('Monthly income (number or numeric string).'),
     }).partial().refine((data) => Object.keys(data).length > 0, {
         message: 'At least one profile field is required.',
     }),

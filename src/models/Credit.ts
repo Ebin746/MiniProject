@@ -6,6 +6,11 @@ const CreditSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    aadhar_no: {
+        type: String,
+        default: null,
+        index: true,
+    },
     score: {
         type: Number,
         required: true,

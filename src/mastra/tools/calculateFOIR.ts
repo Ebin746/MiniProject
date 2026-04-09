@@ -5,9 +5,9 @@ export const calculateFOIR = createTool({
     id: 'calculateFOIR',
     description: 'Calculate the Fixed Obligation to Income Ratio (FOIR).',
     inputSchema: z.object({
-        income: z.union([z.number(), z.string()]).describe('Monthly income'),
-        existing_emi: z.union([z.number(), z.string()]).optional().describe('Total monthly EMIs (defaults to 0)'),
-        creditScore: z.union([z.number(), z.string()]).optional().describe('User credit score (from PAN)'),
+        income: z.string().describe('Monthly income (number or numeric string, e.g. 50000 or 50k)'),
+        existing_emi: z.string().optional().describe('Total monthly EMIs (number or numeric string, defaults to 0)'),
+        creditScore: z.string().optional().describe('User credit score (number or numeric string from PAN), defaults to 700'),
     }),
     execute: async ({ context }) => {
         const parseValue = (val: number | string | undefined): number => {

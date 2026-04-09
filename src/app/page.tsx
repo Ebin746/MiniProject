@@ -3,12 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import  Link  from "next/link";
 import { Moon, Sun } from 'lucide-react';
+import { getAuthMe, type AuthMeUser } from '@/lib/client-auth';
 
-type AuthUser = {
-  userId?: string;
-  name?: string;
-  email?: string;
-};
+type AuthUser = AuthMeUser;
 
 const LandingPage = () => {
   const [isDark, setIsDark] = useState(() => {
@@ -24,19 +21,9 @@ const LandingPage = () => {
     }
 
     const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user || null);
-        } else {
-          setUser(null);
-        }
-      } catch {
-        setUser(null);
-      } finally {
-        setAuthChecking(false);
-      }
+      const result = await getAuthMe();
+      setUser(result.user);
+      setAuthChecking(false);
     };
 
     checkAuth();
@@ -218,7 +205,7 @@ const LandingPage = () => {
             <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
               <div className="text-blue-400 text-4xl mb-4">🔒</div>
               <h3 className="text-xl font-bold mb-4">256-bit Security</h3>
-              <div className="text-slate-400">Bank-grade encryption to keep your Aadhar and PAN details safe.</div>
+              <div className="text-slate-400">Your Aadhaar and PAN details are handled safely and only used for verification.</div>
             </div>
           </div>
         </div>

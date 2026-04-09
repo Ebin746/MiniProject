@@ -1,5 +1,4 @@
 import { SessionData } from './session-manager';
-import { encryptField } from './field-encryption';
 
 type LooseToolResult = {
   payload?: Record<string, unknown>;
@@ -50,13 +49,9 @@ function getToolInput(tr: unknown): Record<string, unknown> {
 }
 
 export function processToolResults(session: SessionData, toolResults: unknown[]): void {
-  toolResults.forEach((tr: unknown, i) => {
-    const row = asRecord(tr);
-    const payload = asRecord(row.payload ?? row);
-    const tName = payload.toolName || row.toolName || row.name || 'unknown';
-    const toolRes = asRecord(payload.result ?? row.result);
-
-    console.log(`Processing tool [${i}]: ${String(tName)}`);
+  toolResults.forEach((tr: unknown) => {
+    const tName = getToolName(tr);
+    const toolRes = getToolResult(tr);
 
     if (tName === 'updateProfile') {
       if (session.stage === 'sales') {
@@ -108,7 +103,7 @@ export function buildUserPersistenceUpdates(
       updates['verification.hasVerifiedKyc'] = true;
 
       if (typeof toolInput.aadhar_no === 'string') {
-        updates['documents.aadhaarNo'] = encryptField(toolInput.aadhar_no.replace(/\s/g, ''));
+        updates['documents.aadhaarNo'] = toolInput.aadhar_no.replace(/\s/g, '');
       }
       if (typeof toolInput.dob === 'string') {
         updates['documents.dob'] = toolInput.dob.trim();
@@ -120,7 +115,7 @@ export function buildUserPersistenceUpdates(
         nextState.hasVerifiedPan = true;
         updates['verification.hasVerifiedPan'] = true;
         if (typeof toolInput.pan === 'string') {
-          updates['documents.pan'] = encryptField(toolInput.pan.trim().toUpperCase());
+          updates['documents.pan'] = toolInput.pan.trim().toUpperCase();
         }
       }
 
