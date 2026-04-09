@@ -10,12 +10,12 @@ export const generateLoanPDF = createTool({
     description: 'Generate a PDF document for loan confirmation with user and loan details.',
     inputSchema: z.object({
         name: z.string().describe('User name'),
-        income: z.union([z.number(), z.string()]).describe('Monthly income'),
-        existing_emi: z.union([z.number(), z.string()]).describe('Existing EMI'),
+        income: z.string().describe('Monthly income (number or numeric string, e.g. 50000 or 50k)'),
+        existing_emi: z.string().describe('Existing EMI (number or numeric string, e.g. 12000)'),
         loanName: z.string().describe('Name of the loan'),
-        loanAmount: z.union([z.number(), z.string()]).describe('Loan amount'),
-        loanTenure: z.union([z.number(), z.string()]).describe('Loan tenure in months'),
-        interestRate: z.union([z.number(), z.string()]).describe('Interest rate percentage'),
+        loanAmount: z.string().describe('Loan amount (number or numeric string, e.g. 8L, 800000)'),
+        loanTenure: z.string().describe('Loan tenure in months (numeric string)'),
+        interestRate: z.string().describe('Interest rate percentage (numeric string, e.g. 11.5)'),
     }),
     execute: async ({ context }) => {
         const parseValue = (val: number | string): number => {

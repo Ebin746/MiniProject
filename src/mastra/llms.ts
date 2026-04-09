@@ -1,8 +1,16 @@
+// The fastest high-volume workhorse from the new generation.
+export const PRIMARY_MODEL = 'google/gemini-3.1-flash-lite-preview';
+
+//export const PRIMARY_MODEL = 'google/gemini-3-flash-preview';
+//export const PRIMARY_MODEL = 'google/gemini-2.5-pro';
+//export const PRIMARY_MODEL = 'google/gemini-2.5-flash';
+//export const PRIMARY_MODEL = 'google/gemini-2.5-flash-lite';
+
 
 //export const PRIMARY_MODEL = 'groq/llama-3.3-70b-versatile';
 
 
-export const PRIMARY_MODEL = 'cerebras/qwen-3-235b-a22b-instruct-2507';
+//export const PRIMARY_MODEL = 'cerebras/qwen-3-235b-a22b-instruct-2507';
 
 
 
