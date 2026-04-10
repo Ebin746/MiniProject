@@ -8,17 +8,27 @@ import { getAuthMe, type AuthMeUser } from '@/lib/client-auth';
 type AuthUser = AuthMeUser;
 
 const LandingPage = () => {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("theme") === "dark";
-  });
+  const [isDark, setIsDark] = useState(false);
+  const [themeReady, setThemeReady] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
 
+  const applyTheme = (nextDark: boolean) => {
+    const nextTheme = nextDark ? "dark" : "light";
+    localStorage.setItem("theme", nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    document.documentElement.classList.toggle("dark", nextDark);
+    setIsDark(nextDark);
+  };
+
   useEffect(() => {
-    if (!localStorage.getItem("theme")) {
-      localStorage.setItem("theme", "light");
-    }
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialDark = stored === "dark" || (stored !== "light" && prefersDark);
+    const rafId = window.requestAnimationFrame(() => {
+      applyTheme(initialDark);
+      setThemeReady(true);
+    });
 
     const checkAuth = async () => {
       const result = await getAuthMe();
@@ -27,15 +37,19 @@ const LandingPage = () => {
     };
 
     checkAuth();
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const toggleTheme = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      localStorage.setItem("theme", next ? "dark" : "light");
-      return next;
-    });
+    applyTheme(!isDark);
   };
+
+  if (!themeReady) {
+    return <div className="min-h-screen bg-slate-950" />;
+  }
 
   return (
     <div className={`min-h-screen relative overflow-hidden selection:bg-teal-500/20 font-sans transition-colors duration-500 ${
@@ -56,33 +70,33 @@ const LandingPage = () => {
       <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-500 ${
         isDark ? "bg-slate-950/80 border-slate-800" : "bg-white/80 border-slate-200"
       }`}>
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
-            <span className="text-xl md:text-2xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">Finance Bot</span>
+            <span className="text-base sm:text-xl md:text-2xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">loanCopilot</span>
           </div>
           <div className={`hidden md:flex gap-8 font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
             <a href="#how-it-works" className="hover:text-blue-600">Process</a>
             <a href="#features" className="hover:text-blue-600">Features</a>
             <a href="#reviews" className="hover:text-blue-600">Reviews</a>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button 
               onClick={toggleTheme}
-              className={`relative w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none shadow-inner ${
+              className={`relative w-12 h-7 sm:w-14 sm:h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none shadow-inner ${
                 isDark ? "bg-slate-800" : "bg-slate-200"
               }`}
               aria-label="Toggle theme"
             >
-              <div className={`w-6 h-6 rounded-full shadow-md transform transition-transform duration-500 flex items-center justify-center ${
-                isDark ? "translate-x-6 bg-slate-900" : "translate-x-0 bg-white"
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full shadow-md transform transition-transform duration-500 flex items-center justify-center ${
+                isDark ? "translate-x-5 sm:translate-x-6 bg-slate-900" : "translate-x-0 bg-white"
               }`}>
                 {isDark ? (
-                  <Moon size={14} className="text-blue-400 fill-blue-400" />
+                  <Moon size={12} className="text-blue-400 fill-blue-400 sm:w-3.5 sm:h-3.5" />
                 ) : (
-                  <Sun size={14} className="text-yellow-500 fill-yellow-500" />
+                  <Sun size={12} className="text-yellow-500 fill-yellow-500 sm:w-3.5 sm:h-3.5" />
                 )}
               </div>
             </button>
@@ -92,18 +106,22 @@ const LandingPage = () => {
                   Welcome, {user.name || 'User'}
                 </span>
                 <Link href="/chat">
-                  <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
-                    Go to Chat
+                  <button className="bg-blue-600 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-xl text-xs sm:text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                    <span className="sm:hidden">Chat</span>
+                    <span className="hidden sm:inline">Go to Chat</span>
                   </button>
                 </Link>
               </>
             ) : (
               <>
                 <Link href ="/login">
-                  <button className={`text-sm font-medium px-4 ${isDark ? "text-slate-200" : "text-slate-600"}`}>Log In</button>
+                  <button className={`hidden sm:inline text-sm font-medium px-2 sm:px-4 ${isDark ? "text-slate-200" : "text-slate-600"}`}>Log In</button>
                 </Link>
                 <Link href ="/signup">
-                  <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">Get Started</button>
+                  <button className="bg-blue-600 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-xl text-xs sm:text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                    <span className="sm:hidden">Start</span>
+                    <span className="hidden sm:inline">Get Started</span>
+                  </button>
                 </Link>
               </>
             )}
@@ -119,7 +137,7 @@ const LandingPage = () => {
               <div className={`inline-flex items-center gap-2 border px-4 py-1.5 rounded-full text-sm font-medium text-blue-600 shadow-sm ${
                 isDark ? "bg-slate-900 border-slate-700" : "bg-white border-blue-100"
               }`}>
-                <span>✨ Smart Banking Assistant</span>
+                <span>Smart Banking Assistant</span>
               </div>
               <h1 className={`text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] ${isDark ? "text-slate-100" : "text-slate-900"}`}>
                 Get Your Loan Approved<br />
@@ -193,17 +211,17 @@ const LandingPage = () => {
           <p className="text-slate-400 mb-12">Your financial security is our top priority.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
-              <div className="text-blue-400 text-4xl mb-4">⚡</div>
+              <div className="text-blue-400 text-2xl mb-4 font-bold">FAST</div>
               <h3 className="text-xl font-bold mb-4">Fast Process</h3>
               <div className="text-slate-400">Skip the paperwork. Complete your application in under 5 minutes.</div>
             </div>
             <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
-              <div className="text-teal-400 text-4xl mb-4">🤖</div>
+              <div className="text-teal-400 text-2xl mb-4 font-bold">AI</div>
               <h3 className="text-xl font-bold mb-4">AI Driven</h3>
               <div className="text-slate-400">Smart algorithms that ensure you never get rejected for small errors.</div>
             </div>
             <div className="bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 hover:-translate-y-2 transition-all duration-300">
-              <div className="text-blue-400 text-4xl mb-4">🔒</div>
+              <div className="text-blue-400 text-2xl mb-4 font-bold">SAFE</div>
               <h3 className="text-xl font-bold mb-4">256-bit Security</h3>
               <div className="text-slate-400">Your Aadhaar and PAN details are handled safely and only used for verification.</div>
             </div>
@@ -241,9 +259,9 @@ const LandingPage = () => {
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-md">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
-            <span className={`font-bold text-xl ${isDark ? "text-slate-100" : "text-slate-900"}`}>Finance Bot</span>
+            <span className={`font-bold text-xl ${isDark ? "text-slate-100" : "text-slate-900"}`}>loanCopilot</span>
           </div>
-          <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>© 2026 Finance Bot. All Rights Reserved.</p>
+          <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>(c) 2026 loanCopilot. All Rights Reserved.</p>
           <div className={`flex gap-6 text-sm font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             <span className="hover:text-blue-600 cursor-pointer">Privacy</span>
             <span className="hover:text-blue-600 cursor-pointer">Terms</span>

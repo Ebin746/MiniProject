@@ -105,7 +105,7 @@ Defines and exports the LLM model instance(s) used by the agent.
 |---|---|---|---|
 | `PRIMARY_MODEL` | `gemini-1.5-flash` | Google Gemini | Main reasoning model for the agent |
 
-The model is configured with appropriate parameters for the loan assistant use case:
+The model is configured with appropriate parameters for the loanCopilot use case:
 - `temperature: 0.5` — Balanced between creativity and consistency
 - `maxTokens: 600` — Keeps responses concise (enforced in prompts too)
 

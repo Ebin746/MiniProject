@@ -10,7 +10,7 @@ This is the top-level **Next.js App Router** directory. It contains all UI pages
 src/app/
 ├── layout.tsx          # Root layout (HTML shell, global font, OG metadata)
 ├── globals.css         # Tailwind base layers + CSS root variables
-├── page.tsx            # "/" — Landing page (Finance Bot marketing page)
+├── page.tsx            # "/" — Landing page (loanCopilot marketing page)
 ├── favicon.ico
 │
 ├── login/              # "/login" — JWT-based login page
@@ -19,7 +19,7 @@ src/app/
 ├── signup/             # "/signup" — User registration page
 │   └── page.tsx
 │
-├── chat/               # "/chat" — Core chat UI (the loan assistant interface)
+├── chat/               # "/chat" — Core chat UI (the loanCopilot interface)
 │   └── page.tsx
 │
 ├── upload/             # "/upload" — Admin panel: upload loan policy PDFs
@@ -67,7 +67,7 @@ graph TD
 
 ### `/` — Landing Page (`page.tsx`)
 
-The public marketing page for "Finance Bot". Fully responsive and statically rendered.
+The public marketing page for "loanCopilot". Fully responsive and statically rendered.
 
 **Sections:**
 1. **Navigation Bar** — Logo + "Log In" / "Get Started" CTAs

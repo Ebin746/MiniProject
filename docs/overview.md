@@ -1,6 +1,6 @@
-# Finance Bot — Project Overview
+# loanCopilot — Project Overview
 
-Finance Bot is an AI-powered loan assistant built with **Next.js (App Router)** and the **Mastra AI agent framework**. Users can sign up, chat with an intelligent agent ("Aria"), and be guided through a fully automated loan application flow — from identity verification to loan PDF generation.
+loanCopilot is an AI-powered loanCopilot built with **Next.js (App Router)** and the **Mastra AI agent framework**. Users can sign up, chat with an intelligent agent ("Aria"), and be guided through a fully automated loan application flow — from identity verification to loan PDF generation.
 
 ---
 

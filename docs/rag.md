@@ -5,7 +5,7 @@
 
 > **What is RAG?** Retrieval-Augmented Generation is a technique where an LLM's response is _grounded_ in real documents retrieved at query time, instead of relying solely on its training data. This ensures factual, up-to-date answers.
 
-In the Loan Assistant, RAG powers the **`searchLoanPolicy`** tool — allowing the AI agent **Aria** to answer any user question about loan policies, interest rates, eligibility criteria, EMI calculations, FOIR thresholds, or required documents by searching **actual uploaded bank policy PDFs**.
+In the loanCopilot, RAG powers the **`searchLoanPolicy`** tool — allowing the AI agent **Aria** to answer any user question about loan policies, interest rates, eligibility criteria, EMI calculations, FOIR thresholds, or required documents by searching **actual uploaded bank policy PDFs**.
 
 ---
 
