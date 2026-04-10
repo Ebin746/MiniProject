@@ -6,26 +6,30 @@ import { useRouter } from "next/navigation";
 import { Loader2, Moon, Sun } from "lucide-react";
 
 export default function SignUpPage() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("theme") === "dark";
-  });
+  const [isDark, setIsDark] = useState(false);
+  const [themeReady, setThemeReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
+  const applyTheme = (nextDark: boolean) => {
+    const nextTheme = nextDark ? "dark" : "light";
+    localStorage.setItem("theme", nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    document.documentElement.classList.toggle("dark", nextDark);
+    setIsDark(nextDark);
+  };
+
   useEffect(() => {
-    if (!localStorage.getItem("theme")) {
-      localStorage.setItem("theme", "light");
-    }
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialDark = stored === "dark" || (stored !== "light" && prefersDark);
+    applyTheme(initialDark);
+    setThemeReady(true);
   }, []);
 
   const toggleTheme = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      localStorage.setItem("theme", next ? "dark" : "light");
-      return next;
-    });
+    applyTheme(!isDark);
   };
 
   const [formData, setFormData] = useState({
@@ -39,6 +43,10 @@ export default function SignUpPage() {
     Aadhar: "",
     pan_no: "",
   });
+
+  if (!themeReady) {
+    return <div className="min-h-screen bg-slate-950" />;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -103,7 +111,7 @@ export default function SignUpPage() {
               <div className="w-5 h-5 bg-white rounded-sm"></div>
            </div>
            <span className="text-xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">
-             Finance Bot
+             loanCopilot
            </span>
           </div>
           <button 
@@ -236,7 +244,7 @@ export default function SignUpPage() {
                         ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                         : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     }`}
-                    placeholder="••••••••"
+                    placeholder="********"
                     value={formData.password}
                     onChange={handleChange}
                   />
@@ -258,7 +266,7 @@ export default function SignUpPage() {
                         ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                         : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     }`}
-                    placeholder="••••••••"
+                    placeholder="********"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                   />

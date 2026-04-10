@@ -15,7 +15,6 @@ interface Message {
 interface OCRPreview {
   fileName: string;
   imageUrl: string;
-  fields: Array<{ label: string; value: string }>;
 }
 
 function normalizePdfHref(rawHref: string): string {
@@ -41,23 +40,6 @@ function normalizePdfHref(rawHref: string): string {
   } catch {
     return rawHref;
   }
-}
-
-function parseExtractedFields(text: string): Array<{ label: string; value: string }> {
-  const lines = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const parsed = lines
-    .map((line) => {
-      const match = line.match(/^[-*•\d.)\s]*(.+?)\s*:\s*(.+)$/);
-      if (!match) return null;
-      return { label: match[1].trim(), value: match[2].trim() };
-    })
-    .filter((item): item is { label: string; value: string } => Boolean(item));
-
-  return parsed.slice(0, 6);
 }
 
 export default function Home() {
@@ -180,7 +162,6 @@ export default function Home() {
             ocrPreview: {
               fileName: file.name,
               imageUrl,
-              fields: parseExtractedFields(data.text),
             },
           },
         ]);
@@ -224,21 +205,22 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg ring-2 ring-indigo-500/20">
+      <header className="sticky top-0 z-20 bg-white/95 px-3 py-3 backdrop-blur-sm dark:bg-zinc-900/95 sm:px-6 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+          <div className="h-9 w-9 shrink-0 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg ring-2 ring-indigo-500/20 sm:h-10 sm:w-10 sm:text-xl">
             A
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Loan Assistant</h1>
-              <span className="text-zinc-300 dark:text-zinc-700">|</span>
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h1 className="truncate text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-lg">loanCopilot</h1>
+              <span className="hidden text-zinc-300 dark:text-zinc-700 sm:inline">|</span>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
                 <UserIcon size={12} />
-                <span>{user.name}</span>
+                <span className="max-w-37.5 truncate sm:max-w-55">{user.name}</span>
               </div>
             </div>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1.5">
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 capitalize sm:text-xs">
               <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : stage === 'kyc' || stage === 'credit' ? 'bg-amber-500' : 'bg-indigo-500'} animate-pulse`} />
               Stage: {stage}
               {pdfPath && (
@@ -246,7 +228,7 @@ export default function Home() {
                   href={pdfPath.startsWith('/pdfs/') ? `${typeof window !== 'undefined' ? window.location.origin : ''}${pdfPath}` : pdfPath}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-2 text-indigo-400 hover:text-indigo-300 underline"
+                  className="ml-1 text-indigo-500 hover:text-indigo-400 underline"
                 >
                   View PDF
                 </a>
@@ -254,8 +236,8 @@ export default function Home() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <div className="hidden md:block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
             ID: {sessionId}
           </div>
           <button
@@ -266,6 +248,7 @@ export default function Home() {
             <LogOut size={18} />
           </button>
         </div>
+        </div>
       </header>
 
       {/* Chat History */}
@@ -275,10 +258,10 @@ export default function Home() {
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">👋</div>
+            <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">Hi</div>
             <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {(user.name || 'User').split(' ')[0]}!</h2>
             <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-              I&apos;m your Loan Assistant. I can help you check your loan eligibility in minutes. Let&apos;s start with your basic details.
+              I&apos;m your loanCopilot. I can help you check your loan eligibility in minutes. Let&apos;s start with your basic details.
             </p>
           </div>
         )}
@@ -289,32 +272,24 @@ export default function Home() {
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
           >
             {msg.ocrPreview ? (
-              <div className="w-64 rounded-2xl border border-zinc-200/80 bg-white/90 p-2 shadow-md shrink-0">
-                <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
+              <div className="w-65 shrink-0 rounded-3xl border border-zinc-200/70 bg-linear-to-br from-white via-zinc-100/90 to-zinc-200/80 p-3 shadow-[0_16px_38px_rgba(15,23,42,0.16)] dark:border-zinc-700/70 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+                <div className="relative overflow-hidden rounded-2xl border border-white/50 bg-zinc-100 shadow-inner dark:border-zinc-700/60 dark:bg-zinc-800">
                   <Image
                     src={msg.ocrPreview.imageUrl}
                     alt={msg.ocrPreview.fileName}
-                    width={256}
-                    height={96}
+                    width={260}
+                    height={144}
                     unoptimized
-                    className="h-24 w-full object-cover"
+                    className="h-36 w-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-linear-to-t from-zinc-900/35 via-zinc-900/10 to-transparent" />
-                  <div className="absolute bottom-1 left-2 right-2 text-[10px] font-medium text-white truncate">
+                  <div className="absolute inset-0 bg-linear-to-t from-zinc-950/45 via-zinc-900/10 to-transparent" />
+                  <div className="absolute bottom-2 left-2 right-2 text-[10px] font-semibold tracking-wide text-white/95 truncate">
                     {msg.ocrPreview.fileName}
                   </div>
                 </div>
-                <div className="mt-2 max-h-24 overflow-y-auto space-y-1.5 rounded-lg bg-zinc-50 p-2">
-                  {msg.ocrPreview.fields.length > 0 ? (
-                    msg.ocrPreview.fields.map((field, idx) => (
-                      <div key={`${field.label}-${idx}`} className="grid grid-cols-[80px_1fr] gap-2 text-[11px] leading-snug text-zinc-700">
-                        <span className="font-semibold text-zinc-500 truncate">{field.label}</span>
-                        <span className="text-zinc-800 wrap-break-word">{field.value}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-[11px] text-zinc-500">Document captured and sent for verification.</p>
-                  )}
+                <div className="mt-3 rounded-2xl border border-white/70 bg-white/60 px-3 py-2 text-[11px] text-zinc-700 shadow-sm backdrop-blur-sm dark:border-zinc-700/70 dark:bg-zinc-900/70 dark:text-zinc-300">
+                  <p className="font-semibold text-zinc-800 dark:text-zinc-200">Document preview</p>
+                  <p className="mt-0.5 text-zinc-600 dark:text-zinc-400">Image captured and queued for secure verification.</p>
                 </div>
               </div>
             ) : (

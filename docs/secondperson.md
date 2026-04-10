@@ -6,7 +6,7 @@
 
 > **The Problem:** A user who has already completed KYC (Aadhaar verification) and PAN verification in a previous session should not be forced to re-verify. The system must recognize them and offer a streamlined "fast path" to loan eligibility.
 
-This document details the complete workflow for how the Loan Assistant detects, authenticates, and fast-tracks a returning user through the loan application process.
+This document details the complete workflow for how the loanCopilot detects, authenticates, and fast-tracks a returning user through the loan application process.
 
 ---
 
@@ -127,7 +127,7 @@ This document details the complete workflow for how the Loan Assistant detects, 
 
 | Aspect | First-Time User | Returning User |
 |---|---|---|
-| **Greeting** | "Hi! I'm Aria, your loan assistant 😊" | "Welcome back Rahul! I already have your KYC and PAN..." |
+| **Greeting** | "Hi! I'm Aria, your loanCopilot 😊" | "Welcome back Rahul! I already have your KYC and PAN..." |
 | **Name collection** | Asked explicitly | Retrieved from working memory |
 | **KYC stage** | Full Aadhaar + DOB verification | **Skipped entirely** |
 | **PAN** | Asked during credit stage | Loaded from `savedPan` in session |

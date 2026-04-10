@@ -1,11 +1,11 @@
-# 🏦 Loan Assistant — AI-Powered Financial Orchestrator
+# 🏦 loanCopilot — AI-Powered Financial Orchestrator
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Mastra](https://img.shields.io/badge/Mastra-AI-indigo?style=for-the-badge)](https://mastra.ai/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**Loan Assistant** is a production-grade, multi-stage AI application that guides users through the complete loan application process — from identity verification to PDF document generation — via a conversational AI agent named **Aria**.
+**loanCopilot** is a production-grade, multi-stage AI application that guides users through the complete loan application process — from identity verification to PDF document generation — via a conversational AI agent named **Aria**.
 
 ## 📚 Full Documentation
 

@@ -132,7 +132,7 @@ This prevents crash scenarios where the session gets an unexpected stage value.
 ## Example Composed Prompt (KYC Stage)
 
 ```
-You are Aria, a warm and friendly loan assistant...
+You are Aria, a warm and friendly loanCopilot...
 [BASE_PROMPT — personality, rules, format constraints]
 
 ## YOU ARE IN THE KYC STAGE

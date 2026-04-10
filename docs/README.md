@@ -1,11 +1,11 @@
-# 🏦 Loan Assistant — Complete Project Documentation
+# 🏦 loanCopilot — Complete Project Documentation
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Mastra](https://img.shields.io/badge/Mastra-AI-indigo?style=for-the-badge)](https://mastra.ai/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**Loan Assistant** (internally called **Finance Bot**) is a production-grade, multi-stage AI web application that streamlines the end-to-end loan eligibility and application process. Powered by an intelligent AI agent named **Aria**, it guides users through a fully automated conversational pipeline — from identity verification to PDF loan document generation.
+**loanCopilot** (internally called **loanCopilot**) is a production-grade, multi-stage AI web application that streamlines the end-to-end loan eligibility and application process. Powered by an intelligent AI agent named **Aria**, it guides users through a fully automated conversational pipeline — from identity verification to PDF loan document generation.
 
 ---
 
@@ -27,7 +27,7 @@
 
 ## 🌟 Project Overview
 
-Finance Bot is an AI-powered loan assistant built with **Next.js (App Router)** and the **Mastra AI agent framework**. Users sign up, chat with the intelligent agent "Aria", and are guided through a fully automated loan application flow — from identity verification to loan PDF generation.
+loanCopilot is an AI-powered loanCopilot built with **Next.js (App Router)** and the **Mastra AI agent framework**. Users sign up, chat with the intelligent agent "Aria", and are guided through a fully automated loan application flow — from identity verification to loan PDF generation.
 
 The system uses a **stage machine** pattern: the conversation automatically advances through defined stages (`sales → kyc → credit → loan_selection → done`) based on the results of tool calls made by the AI agent. Each stage has a narrowly scoped system prompt, preventing the agent from skipping ahead or going off-topic.
 
