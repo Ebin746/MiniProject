@@ -1,0 +1,112 @@
+// Purpose: Chat tool-result post-processing helpers.
+// Use this file for stage transitions driven by tool outputs,
+// PDF link/path extraction, and fallback reply resolution.
+import { SessionData } from '../session-manager';
+
+type LooseToolResult = {
+  payload?: Record<string, unknown>;
+  toolName?: string;
+  name?: string;
+  result?: unknown;
+};
+
+type AgentResult = {
+  text?: string;
+  toolResults?: unknown[];
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function getToolName(tr: unknown): string {
+  const row = asRecord(tr) as LooseToolResult;
+  const payload = asRecord(row.payload);
+  return String(payload.toolName || row.toolName || row.name || 'unknown');
+}
+
+function getToolResult(tr: unknown): Record<string, unknown> {
+  const row = asRecord(tr) as LooseToolResult;
+  const payload = asRecord(row.payload);
+  return asRecord(payload.result ?? row.result);
+}
+
+export function processToolResults(session: SessionData, toolResults: unknown[]): void {
+  toolResults.forEach((tr: unknown) => {
+    const tName = getToolName(tr);
+    const toolRes = getToolResult(tr);
+
+    if (tName === 'updateProfile' && session.stage === 'sales') {
+      session.stage = session.returningEligible ? 'credit' : 'kyc';
+    }
+
+    if (tName === 'verifyKYC' && Object.keys(toolRes).length > 0) {
+      const verified = toolRes.kycFailed === false;
+      session.stage = verified ? 'credit' : 'done';
+    }
+
+    if (tName === 'getCreditScore' && Object.keys(toolRes).length > 0 && toolRes.creditScoreLow) {
+      session.stage = 'done';
+    }
+
+    if (tName === 'calculateFOIR' && Object.keys(toolRes).length > 0) {
+      if (session.stage === 'credit' && toolRes.eligible) {
+        session.stage = 'loan_selection';
+      }
+    }
+
+    if (tName === 'getAvailableLoans') {
+      session.stage = 'loan_selection';
+    }
+
+    if (tName === 'generateLoanPDF' && typeof toolRes.pdfPath === 'string' && toolRes.pdfPath) {
+      session.stage = 'done';
+    }
+  });
+}
+
+export function extractPdfPath(toolResults: unknown[]): string | null {
+  for (let i = toolResults.length - 1; i >= 0; i -= 1) {
+    const toolName = getToolName(toolResults[i]);
+    if (toolName !== 'generateLoanPDF') continue;
+
+    const toolResult = getToolResult(toolResults[i]);
+    if (typeof toolResult.downloadUrl === 'string' && toolResult.downloadUrl.trim()) {
+      return toolResult.downloadUrl.trim();
+    }
+    if (typeof toolResult.fullUrl === 'string' && toolResult.fullUrl.trim()) {
+      return toolResult.fullUrl.trim();
+    }
+    if (typeof toolResult.pdfPath === 'string' && toolResult.pdfPath.trim()) {
+      return toolResult.pdfPath.trim();
+    }
+  }
+
+  return null;
+}
+
+export function resolveReply(result: AgentResult): string {
+  if (result.text) return result.text;
+
+  const toolResults = result.toolResults || [];
+  if (toolResults.length > 0) {
+    const last = asRecord(toolResults[toolResults.length - 1]);
+    const payload = asRecord(last.payload);
+    const res = payload.result ?? last.result;
+    const resRecord = asRecord(res);
+    if (typeof res === 'string') {
+      return res;
+    }
+    if (typeof resRecord.explanation === 'string') {
+      return resRecord.explanation;
+    }
+    if (typeof resRecord.message === 'string') {
+      return resRecord.message;
+    }
+    return 'Processed.';
+  }
+
+  return "I've processed your request.";
+}

@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
-import { masterAgent } from "@/mastra/agents/master";
-import { memory } from "@/mastra/memory";
 import { sessionManager } from "@/lib/session-manager";
-import { buildUserPersistenceUpdates, extractPdfPath, processToolResults, resolveReply } from "../../../lib/chat-memory";
+import { extractPdfPath, processToolResults } from "@/lib/utils/chat-stage-response";
 import { getSession as getAuthSession } from "@/lib/auth";
-import dbConnect from "@/lib/mongodb";
+import { asRecord } from "@/lib/utils/chat-context-utils";
 import {
-  asRecord,
-  extractUserId,
-  getWorkingMemoryField,
-  isWorkingMemoryToolParseError,
-  parseStage,
-  patchBrokenPdfLinks,
-  setWorkingMemoryField,
-} from "@/lib/chat-route-utils";
-import User from "@/models/User";
+  buildCleanReply,
+  buildEnrichedMessage,
+  generateAgentResponse,
+  getWorkingMemorySnapshot,
+  hydrateSessionFromWorkingMemory,
+  resolveAuthorizedUserId,
+  syncStageToWorkingMemoryIfNeeded,
+} from "@/lib/utils/chat-flow-service";
 
 export async function POST(req: Request) {
   try {
@@ -36,50 +33,14 @@ export async function POST(req: Request) {
 
     const session = sessionManager.getSession(sessionId);
 
-    let resolvedUserId = extractUserId(authPayload);
-
-    if (!resolvedUserId && typeof authPayload.email === "string") {
-      await dbConnect();
-      const existingUser = await User.findOne({ email: authPayload.email.toLowerCase().trim() })
-        .select("_id")
-        .lean();
-      if (existingUser?._id) {
-        resolvedUserId = String(existingUser._id);
-      }
-    }
+    const resolvedUserId = await resolveAuthorizedUserId(authPayload);
 
     if (!resolvedUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     session.userId = resolvedUserId;
-    if (!session.userHydrated) {
-      const rememberedWorkingMemory = await memory.getWorkingMemory({
-        threadId: sessionId,
-        resourceId: session.userId,
-      });
-
-      const rememberedStage = parseStage(getWorkingMemoryField(rememberedWorkingMemory, "Current Stage"));
-      if (rememberedStage) {
-        // New sessions should not resume from terminal/late stages for returning users.
-        session.stage = (rememberedStage === "loan_selection" || rememberedStage === "docs" || rememberedStage === "done")
-          ? "sales"
-          : rememberedStage;
-      }
-
-      const rememberedName = getWorkingMemoryField(rememberedWorkingMemory, "Name");
-      if (rememberedName) {
-        session.savedName = rememberedName;
-      }
-
-      const rememberedPan = getWorkingMemoryField(rememberedWorkingMemory, "PAN Card").toUpperCase();
-      const rememberedKycStatus = getWorkingMemoryField(rememberedWorkingMemory, "KYC Status").toLowerCase();
-      const hasRememberedVerification = Boolean(rememberedPan) && rememberedKycStatus === "verified";
-
-      session.returningEligible = hasRememberedVerification;
-      session.savedPan = hasRememberedVerification ? rememberedPan : "";
-      session.userHydrated = true;
-    }
+    await hydrateSessionFromWorkingMemory({ session, sessionId });
 
     const returningEligible = Boolean(session.returningEligible);
     const savedName = session.savedName || "";
@@ -89,118 +50,44 @@ export async function POST(req: Request) {
 
     console.log(`[API/Chat] Session: ${sessionId} | Stage: ${stage}`);
 
-    const enrichedMessage = [
-      `SESSION_CONTEXT: returning_verified_user=${returningEligible ? "true" : "false"}`,
-      `SESSION_CONTEXT: saved_name=${savedName}`,
-      `SESSION_CONTEXT: current_stage=${stage}`,
-      `SESSION_CONTEXT: saved_pan=${savedPan}`,
+    const enrichedMessage = buildEnrichedMessage({
       message,
-    ].join("\n");
+      stage,
+      returningEligible,
+      savedName,
+      savedPan,
+    });
 
-    let result;
-    let usedNoMemoryRetry = false;
-    try {
-      result = await masterAgent(stage, { isReturningUser: returningEligible }).generate(enrichedMessage, {
-        threadId: sessionId,
-        resourceId: session.userId,
-      });
-    } catch (generateError) {
-      if (!isWorkingMemoryToolParseError(generateError)) {
-        throw generateError;
-      }
-
-      console.warn('[API/Chat] Retrying without memory after malformed updateWorkingMemory tool arguments.');
-      result = await masterAgent(stage, {
-        disableMemory: true,
-        isReturningUser: returningEligible,
-      }).generate(enrichedMessage, {
-        threadId: sessionId,
-        resourceId: session.userId,
-      });
-      usedNoMemoryRetry = true;
-    }
+    const { result, usedNoMemoryRetry } = await generateAgentResponse({
+      sessionId,
+      userId: session.userId,
+      stage,
+      returningEligible,
+      enrichedMessage,
+    });
     
     console.log('[API/Chat] Raw LLM text response:', JSON.stringify(result.text));
 
-    // Get working memory (facts the agent remembers)
-    let workingMemory = await memory.getWorkingMemory({
-      threadId: sessionId,
-      resourceId: session.userId,
-    });
+    let workingMemory = await getWorkingMemorySnapshot(sessionId, session.userId);
     console.log('💾 Working Memory:', workingMemory);
 
     // 1. Process tool calls to update session stage/facts
     if (result.toolResults) {
       processToolResults(session, result.toolResults);
-
-      const { updates, nextState } = buildUserPersistenceUpdates(
-        result.toolResults,
-        session.persistedVerification || {
-          hasVerifiedKyc: false,
-          hasVerifiedPan: false,
-          eligibleApproved: false,
-          lastCreditScore: null,
-          lastFoir: null,
-        }
-      );
-
-      session.persistedVerification = nextState;
-
-      if (Object.keys(updates).length > 0) {
-        await dbConnect();
-        await User.updateOne({ _id: session.userId }, { $set: updates });
-      }
     }
 
-    // 2. Persist session
     sessionManager.saveSession(session);
 
-    // Keep stage consistent in memory when generation had to retry without memory tools.
-    if (usedNoMemoryRetry && typeof workingMemory === 'string') {
-      const memoryStage = getWorkingMemoryField(workingMemory, 'Current Stage').toLowerCase();
-      const sessionStage = session.stage.toLowerCase();
+    workingMemory = await syncStageToWorkingMemoryIfNeeded({
+      usedNoMemoryRetry,
+      workingMemory,
+      sessionId,
+      userId: session.userId,
+      stage: session.stage,
+    });
 
-      if (memoryStage !== sessionStage) {
-        const nextWorkingMemory = setWorkingMemoryField(workingMemory, 'Current Stage', session.stage);
-        await memory.updateWorkingMemory({
-          threadId: sessionId,
-          resourceId: session.userId,
-          workingMemory: nextWorkingMemory,
-        });
-        workingMemory = nextWorkingMemory;
-      }
-    }
-
-    // 3. Resolve clean text reply
-    let cleanReply = resolveReply(result);
     const generatedPdfPath = result.toolResults ? extractPdfPath(result.toolResults) : null;
-
-    const latestPdfToolFailure = Array.isArray(result.toolResults)
-      ? [...result.toolResults].reverse().find((toolResult) => {
-          const row = asRecord(toolResult);
-          const payload = asRecord(row.payload);
-          const toolName = String(payload.toolName || row.toolName || row.name || '');
-          if (toolName !== 'generateLoanPDF') return false;
-          const toolRes = asRecord(payload.result ?? row.result);
-          return toolRes.success === false;
-        })
-      : null;
-
-    if (latestPdfToolFailure) {
-      cleanReply = "I'm sorry, I encountered a small technical issue while generating your document. Could you please select the loan option once more so I can retry right away?";
-    }
-
-    if (typeof cleanReply === 'string') {
-      cleanReply = patchBrokenPdfLinks(cleanReply, generatedPdfPath);
-    }
-
-    // Fallback deduplication for LLM glitches (e.g. Llama 3 repeating itself)
-    if (typeof cleanReply === 'string') {
-      const lines = cleanReply.split('\n').map(l => l.trim()).filter(Boolean);
-      if (lines.length === 2 && lines[0] === lines[1]) {
-        cleanReply = lines[0];
-      }
-    }
+    const cleanReply = buildCleanReply({ result, generatedPdfPath });
 
     return NextResponse.json({
       response: cleanReply,
