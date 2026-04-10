@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { useState, useEffect, useRef } from 'react';
-import { LogOut, User as UserIcon, ImagePlus, Loader2 } from 'lucide-react';
+import { LogOut, User as UserIcon, ImagePlus, Loader2, Moon, Send, Sun } from 'lucide-react';
 import { clearAuthMeCache, getAuthMe, type AuthMeUser } from '@/lib/client-auth';
 
 interface Message {
@@ -43,12 +43,16 @@ function normalizePdfHref(rawHref: string): string {
 }
 
 export default function Home() {
+  const MIN_RESPONSE_DELAY_MS = 900;
+  const [isDark, setIsDark] = useState(false);
+  const [themeReady, setThemeReady] = useState(false);
   const [user, setUser] = useState<AuthMeUser | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [sessionId, setSessionId] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [stage, setStage] = useState<'sales' | 'kyc' | 'credit' | 'loan_selection' | 'docs' | 'done'>('sales');
   const [pdfPath, setPdfPath] = useState<string | null>(null);
@@ -58,9 +62,29 @@ export default function Home() {
 
   const createMessageId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const applyTheme = (nextDark: boolean) => {
+    const nextTheme = nextDark ? 'dark' : 'light';
+    localStorage.setItem('theme', nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    document.documentElement.classList.toggle('dark', nextDark);
+    setIsDark(nextDark);
+  };
+
+  const toggleTheme = () => {
+    applyTheme(!isDark);
+  };
+
   useEffect(() => {
     checkAuth();
     setSessionId(`session_${Math.random().toString(36).substring(7)}`);
+
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialDark = stored === 'dark' || (stored !== 'light' && prefersDark);
+    applyTheme(initialDark);
+    setThemeReady(true);
   }, []);
 
   const checkAuth = async () => {
@@ -100,12 +124,14 @@ export default function Home() {
   const sendMessage = async (overrideMessage?: string, options?: { hideUserEcho?: boolean }) => {
     const userMessage = overrideMessage || input.trim();
     if (!userMessage || loading) return;
+    const requestStartedAt = Date.now();
 
     if (!overrideMessage) setInput('');
     if (!options?.hideUserEcho) {
       setMessages((prev) => [...prev, { id: createMessageId(), role: 'user', content: userMessage }]);
     }
     setLoading(true);
+    setIsThinking(true);
 
     try {
       const response = await fetch('/api/chat', {
@@ -115,6 +141,11 @@ export default function Home() {
       });
 
       const data = await response.json();
+      const elapsed = Date.now() - requestStartedAt;
+      if (elapsed < MIN_RESPONSE_DELAY_MS) {
+        await wait(MIN_RESPONSE_DELAY_MS - elapsed);
+      }
+
       console.log(data);
       if (data.error) {
         setMessages((prev) => [...prev, { id: createMessageId(), role: 'assistant', content: `Error: ${data.error}` }]);
@@ -126,8 +157,13 @@ export default function Home() {
         }
       }
     } catch {
+      const elapsed = Date.now() - requestStartedAt;
+      if (elapsed < MIN_RESPONSE_DELAY_MS) {
+        await wait(MIN_RESPONSE_DELAY_MS - elapsed);
+      }
       setMessages((prev) => [...prev, { id: createMessageId(), role: 'assistant', content: 'Connection error. Please try again.' }]);
     } finally {
+      setIsThinking(false);
       setLoading(false);
     }
   };
@@ -186,9 +222,9 @@ export default function Home() {
     }
   }, [authChecking, user]);
 
-  if (authChecking) {
+  if (!themeReady || authChecking) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-zinc-950' : 'bg-zinc-50'}`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -196,71 +232,110 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-zinc-950' : 'bg-zinc-50'}`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
+    <div className={`relative flex h-screen flex-col overflow-hidden font-sans transition-colors duration-300 ${
+      isDark ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'
+    }`}>
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-cyan-200/30 blur-3xl dark:bg-cyan-500/10" />
+        <div className="absolute -right-20 top-24 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl dark:bg-indigo-500/10" />
+        <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-200/20 blur-3xl dark:bg-emerald-500/10" />
+      </div>
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-white/95 px-3 py-3 backdrop-blur-sm dark:bg-zinc-900/95 sm:px-6 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3 sm:items-center">
-          <div className="h-9 w-9 shrink-0 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg ring-2 ring-indigo-500/20 sm:h-10 sm:w-10 sm:text-xl">
-            A
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="truncate text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-lg">loanCopilot</h1>
-              <span className="hidden text-zinc-300 dark:text-zinc-700 sm:inline">|</span>
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                <UserIcon size={12} />
-                <span className="max-w-37.5 truncate sm:max-w-55">{user.name}</span>
+      <header className={`sticky top-0 z-20 border-b px-3 py-2.5 shadow-sm backdrop-blur-sm transition-colors duration-300 sm:px-6 sm:py-4 ${
+        isDark ? 'border-zinc-800 bg-zinc-900/95' : 'border-zinc-200 bg-white/95'
+      }`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-600 text-sm font-bold text-white shadow-lg ring-2 ring-indigo-500/20 flex items-center justify-center sm:h-10 sm:w-10 sm:text-xl">
+              A
+            </div>
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className={`truncate text-sm font-bold tracking-tight sm:text-lg ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>loanCopilot</h1>
+                <div className={`hidden items-center gap-1.5 text-xs sm:flex ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  <span className={isDark ? 'text-zinc-700' : 'text-zinc-300'}>|</span>
+                  <UserIcon size={12} />
+                  <span className="max-w-55 truncate">{user.name}</span>
+                </div>
               </div>
             </div>
-            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 capitalize sm:text-xs">
-              <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : stage === 'kyc' || stage === 'credit' ? 'bg-amber-500' : 'bg-indigo-500'} animate-pulse`} />
-              Stage: {stage}
-              {pdfPath && (
-                <a
-                  href={pdfPath.startsWith('/pdfs/') ? `${typeof window !== 'undefined' ? window.location.origin : ''}${pdfPath}` : pdfPath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-1 text-indigo-500 hover:text-indigo-400 underline"
-                >
-                  View PDF
-                </a>
-              )}
-            </p>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className={`hidden rounded-full px-3 py-1 text-[10px] font-mono lg:block ${
+              isDark ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-100 text-zinc-500'
+            }`}>
+              ID: {sessionId}
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={`relative h-7 w-12 rounded-full p-1 shadow-inner transition-colors duration-300 focus:outline-none sm:h-8 sm:w-14 ${
+                isDark ? 'bg-zinc-800' : 'bg-zinc-200'
+              }`}
+              aria-label="Toggle theme"
+              title="Toggle theme"
+            >
+              <div
+                className={`flex h-5 w-5 items-center justify-center rounded-full shadow-md transform transition-transform duration-500 sm:h-6 sm:w-6 ${
+                  isDark ? 'translate-x-5 sm:translate-x-6 bg-zinc-900' : 'translate-x-0 bg-white'
+                }`}
+              >
+                {isDark ? (
+                  <Moon size={12} className="text-blue-400 fill-blue-400 sm:h-3.5 sm:w-3.5" />
+                ) : (
+                  <Sun size={12} className="text-yellow-500 fill-yellow-500 sm:h-3.5 sm:w-3.5" />
+                )}
+              </div>
+            </button>
+            <button
+              onClick={handleLogout}
+              className={`rounded-lg p-2 text-zinc-500 transition-colors ${
+                isDark ? 'hover:bg-red-900/10 hover:text-red-400' : 'hover:bg-red-50 hover:text-red-500'
+              }`}
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 sm:justify-end">
-          <div className="hidden md:block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
-            ID: {sessionId}
-          </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
-            title="Logout"
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
+        <div className={`mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium capitalize sm:mt-1 sm:text-xs ${
+          isDark ? 'text-zinc-400' : 'text-zinc-500'
+        }`}>
+          <span className={`w-2 h-2 rounded-full ${stage === 'done' ? 'bg-green-500' : stage === 'kyc' || stage === 'credit' ? 'bg-amber-500' : 'bg-indigo-500'} animate-pulse`} />
+          Stage: {stage}
+          {pdfPath && (
+            <a
+              href={pdfPath.startsWith('/pdfs/') ? `${typeof window !== 'undefined' ? window.location.origin : ''}${pdfPath}` : pdfPath}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-500 hover:text-indigo-400 underline"
+            >
+              View PDF
+            </a>
+          )}
         </div>
       </header>
 
       {/* Chat History */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+        className="relative z-10 flex-1 space-y-6 overflow-y-auto p-4 scroll-smooth sm:p-6"
       >
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-3xl mb-2 shadow-inner">Hi</div>
-            <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Hello {(user.name || 'User').split(' ')[0]}!</h2>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+          <div className={`mx-auto flex h-full max-w-sm animate-in flex-col items-center justify-center space-y-4 rounded-3xl border p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.08)] fade-in slide-in-from-bottom-4 duration-1000 backdrop-blur-xl ${
+            isDark ? 'border-zinc-700/60 bg-zinc-900/70' : 'border-white/70 bg-white/80'
+          }`}>
+            <div className={`mb-2 flex h-16 w-16 items-center justify-center rounded-3xl text-3xl shadow-inner ${
+              isDark ? 'bg-indigo-950/30' : 'bg-indigo-50'
+            }`}>Hi</div>
+            <h2 className={`text-xl font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>Hello {(user.name || 'User').split(' ')[0]}!</h2>
+            <p className={`text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
               I&apos;m your loanCopilot. I can help you check your loan eligibility in minutes. Let&apos;s start with your basic details.
             </p>
           </div>
@@ -269,7 +344,7 @@ export default function Home() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+            className={`mx-auto flex w-full max-w-4xl ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
           >
             {msg.ocrPreview ? (
               <div className="w-65 shrink-0 rounded-3xl border border-zinc-200/70 bg-linear-to-br from-white via-zinc-100/90 to-zinc-200/80 p-3 shadow-[0_16px_38px_rgba(15,23,42,0.16)] dark:border-zinc-700/70 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
@@ -293,13 +368,24 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div
-                className={`max-w-[85%] px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-tr-none'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 rounded-tl-none'
-                  }`}
-              >
-                <div className="whitespace-pre-wrap max-w-none">
+              <div className={`flex max-w-[88%] items-end gap-2 sm:max-w-[82%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div
+                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-[11px] font-bold ${msg.role === 'user'
+                    ? 'bg-indigo-600 text-white'
+                    : isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'
+                    }`}
+                >
+                  {msg.role === 'user' ? 'You' : 'AI'}
+                </div>
+                <div
+                  className={`rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm ${msg.role === 'user'
+                    ? 'rounded-tr-none bg-indigo-600 text-white shadow-indigo-600/25'
+                    : isDark
+                      ? 'rounded-tl-none border border-zinc-800/80 bg-zinc-900/90 text-zinc-200 backdrop-blur-sm'
+                      : 'rounded-tl-none border border-zinc-200/80 bg-white/90 text-zinc-800 backdrop-blur-sm'
+                    }`}
+                >
+                  <div className="max-w-none whitespace-pre-wrap">
                   <ReactMarkdown
                     components={{
                       a: ({ ...props }) => {
@@ -320,26 +406,43 @@ export default function Home() {
                   >
                     {msg.content}
                   </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )}
           </div>
         ))}
 
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3.5 rounded-2xl rounded-tl-none shadow-sm flex gap-1.5 items-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.3s]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce [animation-delay:-0.15s]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 animate-bounce" />
+        {isThinking && (
+          <div className="mx-auto flex w-full max-w-4xl justify-start animate-in fade-in duration-200">
+            <div className="flex max-w-[88%] items-end gap-2 sm:max-w-[82%]">
+              <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-[11px] font-bold ${
+                isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'
+              }`}>
+                AI
+              </div>
+              <div className={`rounded-2xl rounded-tl-none border px-5 py-3.5 shadow-sm backdrop-blur-sm ${
+                isDark ? 'border-zinc-800/80 bg-zinc-900/90' : 'border-zinc-200/80 bg-white/90'
+              }`}>
+                <div className={`mb-2 h-2 w-28 animate-pulse rounded-full ${isDark ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+                <div className={`mb-2 h-2 w-44 animate-pulse rounded-full [animation-delay:120ms] ${isDark ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+                <div className="flex items-center gap-1.5">
+                  <div className={`h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s] ${isDark ? 'bg-zinc-600' : 'bg-zinc-400'}`} />
+                  <div className={`h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s] ${isDark ? 'bg-zinc-600' : 'bg-zinc-400'}`} />
+                  <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-zinc-600' : 'bg-zinc-400'}`} />
+                  <span className={`ml-1 text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>Crafting a response...</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Input Area */}
-      <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-        <div className="max-w-4xl mx-auto flex gap-3 relative">
+      <div className={`relative z-10 border-t p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] backdrop-blur-xl sm:p-6 ${
+        isDark ? 'border-zinc-800 bg-zinc-900/90' : 'border-zinc-200 bg-white/90'
+      }`}>
+        <div className="relative mx-auto flex w-full max-w-4xl items-center gap-2 sm:gap-3">
           <input
             type="file"
             ref={fileInputRef}
@@ -348,29 +451,38 @@ export default function Home() {
             onChange={handleFileUpload}
           />
           <button
-            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
+            className={`flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-xl text-zinc-500 transition-all sm:h-auto sm:w-auto sm:rounded-2xl sm:p-4 ${
+              isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-zinc-100 hover:bg-zinc-200'
+            }`}
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || loading}
             title="Upload Document (ID or Salary Slip)"
           >
-            {uploading ? <Loader2 className="animate-spin" size={20} /> : <div className="flex items-center gap-1"><ImagePlus size={20} /><span className="text-[10px] font-bold">UPLOAD DOC</span></div>}
+            {uploading ? <Loader2 className="animate-spin" size={20} /> : <div className="flex items-center gap-1"><ImagePlus size={20} /><span className="hidden text-[10px] font-bold sm:inline">UPLOAD DOC</span></div>}
           </button>
           <input
-            className="flex-1 px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 text-sm transition-all"
-            placeholder="Type your message..."
+            className={`min-w-0 flex-1 rounded-xl border px-3 py-3 text-sm transition-all placeholder-zinc-400 focus:ring-2 focus:ring-indigo-500/20 sm:rounded-2xl sm:px-5 sm:py-4 ${
+              isDark
+                ? 'border-zinc-700/80 bg-zinc-800 text-zinc-100 placeholder-zinc-600'
+                : 'border-zinc-200/80 bg-zinc-50 text-zinc-900'
+            }`}
+            placeholder="Ask anything about your loan journey..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
           />
           <button
-            className={`px-6 py-2 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${loading
-              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+            className={`h-11 shrink-0 rounded-xl px-3 text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:h-auto sm:rounded-2xl sm:px-6 sm:py-2 ${loading
+              ? isDark
+                ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
               : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20'
               }`}
             onClick={() => sendMessage()}
             disabled={loading}
           >
-            Send
+            <Send size={16} className="sm:hidden" />
+            <span className="hidden sm:inline">Send</span>
           </button>
         </div>
 

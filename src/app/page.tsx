@@ -70,33 +70,33 @@ const LandingPage = () => {
       <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-500 ${
         isDark ? "bg-slate-950/80 border-slate-800" : "bg-white/80 border-slate-200"
       }`}>
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
-            <span className="text-xl md:text-2xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">loanCopilot</span>
+            <span className="text-base sm:text-xl md:text-2xl font-bold bg-linear-to-r from-blue-600 to-teal-700 bg-clip-text text-transparent">loanCopilot</span>
           </div>
           <div className={`hidden md:flex gap-8 font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
             <a href="#how-it-works" className="hover:text-blue-600">Process</a>
             <a href="#features" className="hover:text-blue-600">Features</a>
             <a href="#reviews" className="hover:text-blue-600">Reviews</a>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button 
               onClick={toggleTheme}
-              className={`relative w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none shadow-inner ${
+              className={`relative w-12 h-7 sm:w-14 sm:h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none shadow-inner ${
                 isDark ? "bg-slate-800" : "bg-slate-200"
               }`}
               aria-label="Toggle theme"
             >
-              <div className={`w-6 h-6 rounded-full shadow-md transform transition-transform duration-500 flex items-center justify-center ${
-                isDark ? "translate-x-6 bg-slate-900" : "translate-x-0 bg-white"
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full shadow-md transform transition-transform duration-500 flex items-center justify-center ${
+                isDark ? "translate-x-5 sm:translate-x-6 bg-slate-900" : "translate-x-0 bg-white"
               }`}>
                 {isDark ? (
-                  <Moon size={14} className="text-blue-400 fill-blue-400" />
+                  <Moon size={12} className="text-blue-400 fill-blue-400 sm:w-3.5 sm:h-3.5" />
                 ) : (
-                  <Sun size={14} className="text-yellow-500 fill-yellow-500" />
+                  <Sun size={12} className="text-yellow-500 fill-yellow-500 sm:w-3.5 sm:h-3.5" />
                 )}
               </div>
             </button>
@@ -106,18 +106,22 @@ const LandingPage = () => {
                   Welcome, {user.name || 'User'}
                 </span>
                 <Link href="/chat">
-                  <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
-                    Go to Chat
+                  <button className="bg-blue-600 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-xl text-xs sm:text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                    <span className="sm:hidden">Chat</span>
+                    <span className="hidden sm:inline">Go to Chat</span>
                   </button>
                 </Link>
               </>
             ) : (
               <>
                 <Link href ="/login">
-                  <button className={`text-sm font-medium px-4 ${isDark ? "text-slate-200" : "text-slate-600"}`}>Log In</button>
+                  <button className={`hidden sm:inline text-sm font-medium px-2 sm:px-4 ${isDark ? "text-slate-200" : "text-slate-600"}`}>Log In</button>
                 </Link>
                 <Link href ="/signup">
-                  <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">Get Started</button>
+                  <button className="bg-blue-600 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-xl text-xs sm:text-sm font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                    <span className="sm:hidden">Start</span>
+                    <span className="hidden sm:inline">Get Started</span>
+                  </button>
                 </Link>
               </>
             )}
