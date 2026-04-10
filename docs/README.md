@@ -263,6 +263,8 @@ JWT_SECRET=your_super_secret_jwt_key_min_32_chars
 | [prompts.md](./prompts.md) | Stage-aware system prompt design and persona |
 | [tools.md](./tools.md) | All 7 agent-callable tools with input/output schemas |
 | [models.md](./models.md) | MongoDB Mongoose schemas (User, Loan, KYC, Credit, PolicyDocument) |
+| [rag.md](./rag.md) | RAG pipeline — PDF ingestion, vector embeddings, semantic search, policy Q&A |
+| [secondperson.md](./secondperson.md) | Returning user detection, session hydration, KYC skip, fast-path flow |
 | [test.md](./test.md) | Test scenarios, fixtures, and how to run them |
 
 ---
