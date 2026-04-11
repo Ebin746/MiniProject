@@ -1,43 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sun, Moon, Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export default function LoginPage() {
-  const [isDark, setIsDark] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = resolvedTheme !== undefined;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const isDark = resolvedTheme === "dark";
 
-  const applyTheme = (nextDark: boolean) => {
-    const nextTheme = nextDark ? "dark" : "light";
-    localStorage.setItem("theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    document.documentElement.classList.toggle("dark", nextDark);
-    setIsDark(nextDark);
-  };
-  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialDark = stored === "dark" || (stored !== "light" && prefersDark);
-    applyTheme(initialDark);
-    setThemeReady(true);
-  }, []);
-
   const toggleTheme = () => {
-    applyTheme(!isDark);
+    setTheme(isDark ? "light" : "dark");
   };
 
-  if (!themeReady) {
+  if (!mounted) {
     return <div className="min-h-screen bg-slate-950" />;
   }
 

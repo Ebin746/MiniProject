@@ -8,23 +8,36 @@ type EncryptedPayload = {
 
 const ALGO = 'aes-256-gcm';
 
+function parseDirectKey(raw: string): Buffer | null {
+  const normalized = raw.trim();
+
+  // Accept 64-char hex key.
+  if (/^[0-9a-fA-F]{64}$/.test(normalized)) {
+    return Buffer.from(normalized, 'hex');
+  }
+
+  // Accept base64-encoded 32-byte key.
+  const fromBase64 = Buffer.from(normalized, 'base64');
+  if (fromBase64.length === 32) {
+    return fromBase64;
+  }
+
+  return null;
+}
+
 function getEncryptionKey(): Buffer {
   const directKey = process.env.PII_ENCRYPTION_KEY;
   if (directKey) {
-    const normalized = directKey.trim();
-
-    // Accept 64-char hex key.
-    if (/^[0-9a-fA-F]{64}$/.test(normalized)) {
-      return Buffer.from(normalized, 'hex');
+    const parsed = parseDirectKey(directKey);
+    if (parsed) {
+      return parsed;
     }
 
-    // Accept base64-encoded 32-byte key.
-    const fromBase64 = Buffer.from(normalized, 'base64');
-    if (fromBase64.length === 32) {
-      return fromBase64;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('PII_ENCRYPTION_KEY must be 32-byte base64 or 64-char hex.');
     }
 
-    throw new Error('PII_ENCRYPTION_KEY must be 32-byte base64 or 64-char hex.');
+    console.warn('Invalid PII_ENCRYPTION_KEY format. Falling back to NEXTAUTH_SECRET/JWT_SECRET in non-production.');
   }
 
   // Fallback keeps non-production/dev setups working while still avoiding plaintext storage.

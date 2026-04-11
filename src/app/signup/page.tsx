@@ -1,35 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export default function SignUpPage() {
-  const [isDark, setIsDark] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = resolvedTheme !== undefined;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-
-  const applyTheme = (nextDark: boolean) => {
-    const nextTheme = nextDark ? "dark" : "light";
-    localStorage.setItem("theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    document.documentElement.classList.toggle("dark", nextDark);
-    setIsDark(nextDark);
-  };
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialDark = stored === "dark" || (stored !== "light" && prefersDark);
-    applyTheme(initialDark);
-    setThemeReady(true);
-  }, []);
+  const isDark = resolvedTheme === "dark";
 
   const toggleTheme = () => {
-    applyTheme(!isDark);
+    setTheme(isDark ? "light" : "dark");
   };
 
   const [formData, setFormData] = useState({
@@ -44,7 +30,7 @@ export default function SignUpPage() {
     pan_no: "",
   });
 
-  if (!themeReady) {
+  if (!mounted) {
     return <div className="min-h-screen bg-slate-950" />;
   }
 

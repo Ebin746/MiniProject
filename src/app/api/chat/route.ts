@@ -68,7 +68,9 @@ export async function POST(req: Request) {
     console.log('[API/Chat] LLM response generated.');
 
     const workingMemory = await getWorkingMemorySnapshot(sessionId, session.userId);
-    console.log('[API/Chat] Working memory snapshot captured.');
+    console.log(
+      `[API/Chat] Working memory snapshot:\n${workingMemory && workingMemory.trim() ? workingMemory : '(empty)'}`
+    );
 
     const scrubbedWorkingMemory = await scrubSensitiveWorkingMemoryIfNeeded({
       sessionId,
