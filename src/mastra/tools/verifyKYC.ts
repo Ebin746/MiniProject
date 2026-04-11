@@ -4,7 +4,7 @@ import dbConnect from '../../lib/mongodb';
 import KYC from '../../models/KYC';
 import User from '../../models/User';
 import { encryptPII } from '../../lib/security/pii-crypto';
-import { resolveToolUserId } from './secureUserIdentity';
+import { resolveToolUserId } from '../utils/secureUserIdentity';
 
 export const verifyKYC = createTool({
     id: 'verifyKYC',

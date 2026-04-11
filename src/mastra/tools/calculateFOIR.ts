@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import User from '../../models/User';
 import dbConnect from '../../lib/mongodb';
-import { resolveToolUserId } from './secureUserIdentity';
+import { resolveToolUserId } from '../utils/secureUserIdentity';
 
 export const calculateFOIR = createTool({
     id: 'calculateFOIR',

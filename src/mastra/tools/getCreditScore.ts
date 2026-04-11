@@ -4,7 +4,7 @@ import dbConnect from '../../lib/mongodb';
 import Credit from '../../models/Credit';
 import User from '../../models/User';
 import { encryptPII } from '../../lib/security/pii-crypto';
-import { getVerifiedUserIdentity, resolveToolUserId } from './secureUserIdentity';
+import { getVerifiedUserIdentity, resolveToolUserId } from '../utils/secureUserIdentity';
 
 export const getCreditScore = createTool({
     id: 'getCreditScore',
