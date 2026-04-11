@@ -1,5 +1,8 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
+import User from '../../models/User';
+import dbConnect from '../../lib/mongodb';
+import { resolveToolUserId } from './secureUserIdentity';
 
 export const calculateFOIR = createTool({
     id: 'calculateFOIR',
@@ -9,7 +12,8 @@ export const calculateFOIR = createTool({
         existing_emi: z.string().optional().describe('Total monthly EMIs (number or numeric string, defaults to 0)'),
         creditScore: z.string().optional().describe('User credit score (number or numeric string from PAN), defaults to 700'),
     }),
-    execute: async ({ context }) => {
+    execute: async (input) => {
+        const context = input.context;
         const parseValue = (val: number | string | undefined): number => {
             if (val === undefined) return 0;
             if (typeof val === 'number') return val;
@@ -38,12 +42,32 @@ export const calculateFOIR = createTool({
         if (foir > 50) explanation += `Your FOIR of ${foir.toFixed(2)}% exceeds the 50% limit. `;
         if (creditScore < 600) explanation += `Your credit score of ${creditScore} is below the required 600. `;
 
-        return {
+        const result = {
             foir: parseFloat(foir.toFixed(2)),
             creditScore,
             risk,
             eligible,
             explanation
         };
+
+        try {
+            const runtimeContext = (input as { runtimeContext?: unknown; resourceId?: unknown; userId?: unknown }).runtimeContext
+                ?? { resourceId: (input as { resourceId?: unknown }).resourceId, userId: (input as { userId?: unknown }).userId };
+            const userId = resolveToolUserId(runtimeContext);
+            await dbConnect();
+            await User.findByIdAndUpdate(
+                userId,
+                {
+                    $set: {
+                        lastFoir: result.foir,
+                    },
+                },
+                { new: false }
+            );
+        } catch {
+            // Keep eligibility flow resilient if metadata persistence fails.
+        }
+
+        return result;
     }
 });

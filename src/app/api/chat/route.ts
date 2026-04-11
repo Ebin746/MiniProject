@@ -10,6 +10,7 @@ import {
   getWorkingMemorySnapshot,
   hydrateSessionFromWorkingMemory,
   resolveAuthorizedUserId,
+  scrubSensitiveWorkingMemoryIfNeeded,
   syncStageToWorkingMemoryIfNeeded,
 } from "@/lib/utils/chat-flow-service";
 
@@ -44,7 +45,6 @@ export async function POST(req: Request) {
 
     const returningEligible = Boolean(session.returningEligible);
     const savedName = session.savedName || "";
-    const savedPan = session.savedPan || "";
 
     const stage = session.stage;
 
@@ -55,7 +55,6 @@ export async function POST(req: Request) {
       stage,
       returningEligible,
       savedName,
-      savedPan,
     });
 
     const { result, usedNoMemoryRetry } = await generateAgentResponse({
@@ -66,10 +65,16 @@ export async function POST(req: Request) {
       enrichedMessage,
     });
     
-    console.log('[API/Chat] Raw LLM text response:', JSON.stringify(result.text));
+    console.log('[API/Chat] LLM response generated.');
 
-    let workingMemory = await getWorkingMemorySnapshot(sessionId, session.userId);
-    console.log('💾 Working Memory:', workingMemory);
+    const workingMemory = await getWorkingMemorySnapshot(sessionId, session.userId);
+    console.log('[API/Chat] Working memory snapshot captured.');
+
+    const scrubbedWorkingMemory = await scrubSensitiveWorkingMemoryIfNeeded({
+      sessionId,
+      userId: session.userId,
+      workingMemory,
+    });
 
     // 1. Process tool calls to update session stage/facts
     if (result.toolResults) {
@@ -78,9 +83,9 @@ export async function POST(req: Request) {
 
     sessionManager.saveSession(session);
 
-    workingMemory = await syncStageToWorkingMemoryIfNeeded({
+    await syncStageToWorkingMemoryIfNeeded({
       usedNoMemoryRetry,
-      workingMemory,
+      workingMemory: scrubbedWorkingMemory,
       sessionId,
       userId: session.userId,
       stage: session.stage,

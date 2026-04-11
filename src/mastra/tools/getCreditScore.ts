@@ -2,17 +2,38 @@ import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import dbConnect from '../../lib/mongodb';
 import Credit from '../../models/Credit';
+import User from '../../models/User';
+import { encryptPII } from '../../lib/security/pii-crypto';
+import { getVerifiedUserIdentity, resolveToolUserId } from './secureUserIdentity';
 
 export const getCreditScore = createTool({
     id: 'getCreditScore',
-    description: 'Fetch credit score by PAN and verify PAN-Aadhaar linkage.',
+    description: 'Fetch credit score using secure identity data. Reads PAN/Aadhaar from encrypted profile when available.',
     inputSchema: z.object({
-        pan: z.string().describe('Permanent Account Number (PAN)'),
-        aadhar_no: z.string().describe('Aadhaar number for PAN-Aadhaar linkage check.'),
+        pan: z.string().optional().describe('Permanent Account Number (PAN). Optional for returning verified users.'),
+        aadhar_no: z.string().optional().describe('Aadhaar number for PAN-Aadhaar linkage check. Optional if already verified.'),
     }),
-    execute: async ({ context }) => {
-        const pan = context.pan.trim();
-        const aadharNo = context.aadhar_no.replace(/\s/g, '');
+    execute: async (input) => {
+        const context = input.context;
+        const runtimeContext = (input as { runtimeContext?: unknown; resourceId?: unknown; userId?: unknown }).runtimeContext
+            ?? { resourceId: (input as { resourceId?: unknown }).resourceId, userId: (input as { userId?: unknown }).userId };
+        const userId = resolveToolUserId(runtimeContext);
+        const secureIdentity = await getVerifiedUserIdentity(userId);
+
+        const requestedPan = typeof context.pan === 'string' ? context.pan.trim().toUpperCase() : '';
+        const requestedAadhaar = typeof context.aadhar_no === 'string' ? context.aadhar_no.replace(/\s/g, '') : '';
+
+        const pan = requestedPan || secureIdentity.pan;
+        const aadharNo = requestedAadhaar || secureIdentity.aadhaar;
+
+        if (!pan) {
+            return {
+                success: false,
+                creditScoreLow: true,
+                scoreCategory: 'UNKNOWN',
+                message: 'PAN is required for eligibility check. Please share PAN once to continue securely.',
+            };
+        }
 
         try {
             await dbConnect();
@@ -21,8 +42,21 @@ export const getCreditScore = createTool({
             });
 
             if (record) {
+                if (requestedPan) {
+                    await User.findByIdAndUpdate(
+                        userId,
+                        {
+                            $set: {
+                                encryptedPan: encryptPII(pan),
+                                hasVerifiedPan: true,
+                            },
+                        },
+                        { new: false }
+                    );
+                }
+
                 const linkedAadhar = typeof record.aadhar_no === 'string' ? record.aadhar_no.replace(/\s/g, '') : '';
-                if (!linkedAadhar) {
+                if (!linkedAadhar && aadharNo) {
                     return {
                         success: false,
                         creditScoreLow: true,
@@ -32,7 +66,7 @@ export const getCreditScore = createTool({
                     };
                 }
 
-                if (linkedAadhar !== aadharNo) {
+                if (aadharNo && linkedAadhar && linkedAadhar !== aadharNo) {
                     return {
                         success: false,
                         creditScoreLow: true,
@@ -48,6 +82,17 @@ export const getCreditScore = createTool({
                         record.score >= 700 ? 'GOOD' :
                             record.score >= 650 ? 'FAIR' :
                                 record.score >= 600 ? 'POOR' : 'VERY LOW';
+
+                await User.findByIdAndUpdate(
+                    userId,
+                    {
+                        $set: {
+                            lastCreditScore: record.score,
+                        },
+                    },
+                    { new: false }
+                );
+
                 return {
                     success: true,
                     creditScoreLow,
@@ -55,8 +100,8 @@ export const getCreditScore = createTool({
                     score: record.score,
                     emi: record.emi || 0,
                     message: creditScoreLow
-                        ? `Credit score for PAN ${pan.toUpperCase()} is ${record.score}, which is very low.`
-                        : `Credit score for PAN ${pan.toUpperCase()} is ${record.score}.`
+                        ? `Credit score is ${record.score}, which is below the required threshold.`
+                        : `Credit score is ${record.score}.`
                 };
             } else {
                 return {
@@ -74,4 +119,27 @@ export const getCreditScore = createTool({
             };
         }
     }
+});
+
+export const getVerifiedUserData = createTool({
+    id: 'getVerifiedUserData',
+    description: 'Get secure returning-user verification flags from encrypted profile data without exposing raw PAN/Aadhaar.',
+    inputSchema: z.object({}).optional(),
+    execute: async (input) => {
+        const runtimeContext = (input as { runtimeContext?: unknown; resourceId?: unknown; userId?: unknown }).runtimeContext
+            ?? { resourceId: (input as { resourceId?: unknown }).resourceId, userId: (input as { userId?: unknown }).userId };
+        const userId = resolveToolUserId(runtimeContext);
+        const secureIdentity = await getVerifiedUserIdentity(userId);
+
+        return {
+            hasVerifiedKyc: secureIdentity.hasVerifiedKyc,
+            hasVerifiedPan: secureIdentity.hasVerifiedPan,
+            hasSensitiveIdentity: Boolean(secureIdentity.pan),
+            lastCreditScore: secureIdentity.lastCreditScore,
+            lastFoir: secureIdentity.lastFoir,
+            message: secureIdentity.pan
+                ? 'Verified identity found in secure profile store.'
+                : 'No stored PAN found in secure profile store.',
+        };
+    },
 });
