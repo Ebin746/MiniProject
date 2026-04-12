@@ -4,32 +4,18 @@ import React, { useEffect, useState } from 'react';
 import  Link  from "next/link";
 import { Moon, Sun } from 'lucide-react';
 import { getAuthMe, type AuthMeUser } from '@/lib/client-auth';
+import { useTheme } from 'next-themes';
 
 type AuthUser = AuthMeUser;
 
 const LandingPage = () => {
-  const [isDark, setIsDark] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
-
-  const applyTheme = (nextDark: boolean) => {
-    const nextTheme = nextDark ? "dark" : "light";
-    localStorage.setItem("theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    document.documentElement.classList.toggle("dark", nextDark);
-    setIsDark(nextDark);
-  };
+  const mounted = resolvedTheme !== undefined;
+  const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialDark = stored === "dark" || (stored !== "light" && prefersDark);
-    const rafId = window.requestAnimationFrame(() => {
-      applyTheme(initialDark);
-      setThemeReady(true);
-    });
-
     const checkAuth = async () => {
       const result = await getAuthMe();
       setUser(result.user);
@@ -37,17 +23,13 @@ const LandingPage = () => {
     };
 
     checkAuth();
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-    };
   }, []);
 
   const toggleTheme = () => {
-    applyTheme(!isDark);
+    setTheme(isDark ? 'light' : 'dark');
   };
 
-  if (!themeReady) {
+  if (!mounted) {
     return <div className="min-h-screen bg-slate-950" />;
   }
 

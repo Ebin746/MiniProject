@@ -25,9 +25,7 @@ export const memory = new Memory({
 ## User Profile
 - Name:
 - Monthly Income:
-- Aadhaar NO:
 - Date of Birth:
-- PAN Card:
 ## Application Status
 - Current Stage:
 - KYC Status:

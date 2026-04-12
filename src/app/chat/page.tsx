@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useState, useEffect, useRef } from 'react';
 import { LogOut, User as UserIcon, ImagePlus, Loader2, Moon, Send, Sun } from 'lucide-react';
 import { clearAuthMeCache, getAuthMe, type AuthMeUser } from '@/lib/client-auth';
+import { useTheme } from 'next-themes';
 
 interface Message {
   id: string;
@@ -44,8 +45,7 @@ function normalizePdfHref(rawHref: string): string {
 
 export default function Home() {
   const MIN_RESPONSE_DELAY_MS = 900;
-  const [isDark, setIsDark] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
   const [user, setUser] = useState<AuthMeUser | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [sessionId, setSessionId] = useState('');
@@ -59,32 +59,20 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<string[]>([]);
+  const mounted = resolvedTheme !== undefined;
+  const isDark = resolvedTheme === 'dark';
 
   const createMessageId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const applyTheme = (nextDark: boolean) => {
-    const nextTheme = nextDark ? 'dark' : 'light';
-    localStorage.setItem('theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    document.documentElement.classList.toggle('dark', nextDark);
-    setIsDark(nextDark);
-  };
-
   const toggleTheme = () => {
-    applyTheme(!isDark);
+    setTheme(isDark ? 'light' : 'dark');
   };
 
   useEffect(() => {
     checkAuth();
     setSessionId(`session_${Math.random().toString(36).substring(7)}`);
-
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialDark = stored === 'dark' || (stored !== 'light' && prefersDark);
-    applyTheme(initialDark);
-    setThemeReady(true);
   }, []);
 
   const checkAuth = async () => {
@@ -222,7 +210,7 @@ export default function Home() {
     }
   }, [authChecking, user]);
 
-  if (!themeReady || authChecking) {
+  if (!mounted || authChecking) {
     return (
       <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-zinc-950' : 'bg-zinc-50'}`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>

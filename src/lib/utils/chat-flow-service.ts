@@ -6,6 +6,7 @@ import { memory } from '@/mastra/memory';
 import { SessionData } from '@/lib/session-manager';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import { decryptPII } from '@/lib/security/pii-crypto';
 import {
   asRecord,
   extractUserId,
@@ -68,12 +69,24 @@ export async function hydrateSessionFromWorkingMemory(params: {
     session.savedName = rememberedName;
   }
 
-  const rememberedPan = getWorkingMemoryField(rememberedWorkingMemory, 'PAN Card').toUpperCase();
-  const rememberedKycStatus = getWorkingMemoryField(rememberedWorkingMemory, 'KYC Status').toLowerCase();
-  const hasRememberedVerification = Boolean(rememberedPan) && rememberedKycStatus === 'verified';
+  await dbConnect();
+  const userProfile = await User.findById(session.userId)
+    .select('encryptedPan hasVerifiedPan hasVerifiedKyc')
+    .lean();
+
+  const encryptedPan = typeof userProfile?.encryptedPan === 'string' ? userProfile.encryptedPan : '';
+  let decryptedPan = '';
+  if (encryptedPan) {
+    try {
+      decryptedPan = decryptPII(encryptedPan).toUpperCase();
+    } catch {
+      decryptedPan = '';
+    }
+  }
+  const hasRememberedVerification = Boolean(decryptedPan) && Boolean(userProfile?.hasVerifiedKyc);
 
   session.returningEligible = hasRememberedVerification;
-  session.savedPan = hasRememberedVerification ? rememberedPan : '';
+  session.savedPan = hasRememberedVerification ? decryptedPan : '';
   if (hasRememberedVerification) {
     // Returning verified applicants must refresh income each new chat session.
     // Always start from sales, then transition to credit after updateProfile.
@@ -87,14 +100,12 @@ export function buildEnrichedMessage(params: {
   stage: SessionData['stage'];
   returningEligible: boolean;
   savedName: string;
-  savedPan: string;
 }): string {
-  const { message, stage, returningEligible, savedName, savedPan } = params;
+  const { message, stage, returningEligible, savedName } = params;
   return [
     `SESSION_CONTEXT: returning_verified_user=${returningEligible ? 'true' : 'false'}`,
     `SESSION_CONTEXT: saved_name=${savedName}`,
     `SESSION_CONTEXT: current_stage=${stage}`,
-    `SESSION_CONTEXT: saved_pan=${savedPan}`,
     message,
   ].join('\n');
 }
@@ -114,6 +125,9 @@ export async function generateAgentResponse(params: {
     result = await masterAgent(stage, { isReturningUser: returningEligible }).generate(enrichedMessage, {
       threadId: sessionId,
       resourceId: userId,
+      runtimeContext: {
+        userId,
+      },
     });
   } catch (generateError) {
     if (!isWorkingMemoryToolParseError(generateError)) {
@@ -127,6 +141,9 @@ export async function generateAgentResponse(params: {
     }).generate(enrichedMessage, {
       threadId: sessionId,
       resourceId: userId,
+      runtimeContext: {
+        userId,
+      },
     });
     usedNoMemoryRetry = true;
   }
@@ -139,6 +156,33 @@ export async function getWorkingMemorySnapshot(sessionId: string, userId: string
     threadId: sessionId,
     resourceId: userId,
   });
+}
+
+export async function scrubSensitiveWorkingMemoryIfNeeded(params: {
+  sessionId: string;
+  userId: string;
+  workingMemory: string | null;
+}): Promise<string | null> {
+  const { sessionId, userId, workingMemory } = params;
+  if (typeof workingMemory !== 'string') {
+    return workingMemory;
+  }
+
+  let next = workingMemory;
+  next = setWorkingMemoryField(next, 'PAN Card', '');
+  next = setWorkingMemoryField(next, 'Aadhaar NO', '');
+
+  if (next === workingMemory) {
+    return workingMemory;
+  }
+
+  await memory.updateWorkingMemory({
+    threadId: sessionId,
+    resourceId: userId,
+    workingMemory: next,
+  });
+
+  return next;
 }
 
 export async function syncStageToWorkingMemoryIfNeeded(params: {

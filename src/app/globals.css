@@ -5,7 +5,8 @@
   --foreground: #171717;
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+.dark {
   --background: #0a0a0a;
   --foreground: #ededed;
 }

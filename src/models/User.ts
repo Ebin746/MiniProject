@@ -18,12 +18,36 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Please provide a password'],
     },
+    encryptedPan: {
+        type: String,
+        default: '',
+    },
+    encryptedAadhaar: {
+        type: String,
+        default: '',
+    },
+    hasVerifiedPan: {
+        type: Boolean,
+        default: false,
+    },
+    hasVerifiedKyc: {
+        type: Boolean,
+        default: false,
+    },
+    lastCreditScore: {
+        type: Number,
+        default: null,
+    },
+    lastFoir: {
+        type: Number,
+        default: null,
+    },
  
 
 
 }, { timestamps: true });
 
-UserSchema.pre('save', async function (this: any) {
+UserSchema.pre('save', async function () {
     if (!this.isModified('password')) {
         return;
     }
@@ -31,7 +55,7 @@ UserSchema.pre('save', async function (this: any) {
     this.password = await bcrypt.hash(this.password, salt);
 });
 
-UserSchema.methods.comparePassword = async function (this: any, candidatePassword: string) {
+UserSchema.methods.comparePassword = async function (candidatePassword: string) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 

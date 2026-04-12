@@ -6,7 +6,7 @@ import { MasterAgentPrompt } from '../prompts/master';
 import { PRIMARY_MODEL } from '../llms';
 import {
   getAvailableLoans, generateLoanPDF, updateProfile,
-  calculateFOIR, verifyKYC, getCreditScore, searchLoanPolicy
+  calculateFOIR, verifyKYC, getCreditScore, getVerifiedUserData, searchLoanPolicy
 } from '../tools';
 
 type MasterAgentOptions = {
@@ -27,6 +27,7 @@ export const masterAgent = (stage: string, options: MasterAgentOptions = {}) => 
       updateProfile,
       calculateFOIR,
       verifyKYC,
+      getVerifiedUserData,
       getCreditScore,
       searchLoanPolicy,
     },

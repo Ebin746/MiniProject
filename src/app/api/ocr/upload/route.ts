@@ -41,12 +41,13 @@ Respond with ONLY the extracted data points clearly labeled. If a field is not f
             ],
         });
 
-        console.log('Extracted Text:', extractedText);
+        console.log('OCR extraction completed.');
         console.log('--- Groq Vision OCR End ---');
 
         return NextResponse.json({ text: extractedText });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('OCR Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'OCR processing failed';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

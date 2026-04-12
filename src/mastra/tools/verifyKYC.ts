@@ -2,6 +2,9 @@ import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import dbConnect from '../../lib/mongodb';
 import KYC from '../../models/KYC';
+import User from '../../models/User';
+import { encryptPII } from '../../lib/security/pii-crypto';
+import { resolveToolUserId } from '../utils/secureUserIdentity';
 
 export const verifyKYC = createTool({
     id: 'verifyKYC',
@@ -11,10 +14,14 @@ export const verifyKYC = createTool({
         dob: z.string().describe('Date of birth in YYYY-MM-DD format'),
         expected_name: z.string().describe('Expected applicant full name from salary slip or profile.'),
     }),
-    execute: async ({ context }) => {
+    execute: async (input) => {
+        const context = input.context;
+        const runtimeContext = (input as { runtimeContext?: unknown; resourceId?: unknown; userId?: unknown }).runtimeContext
+            ?? { resourceId: (input as { resourceId?: unknown }).resourceId, userId: (input as { userId?: unknown }).userId };
         const aadhar_no = context.aadhar_no.replace(/\s/g, '');
         const dob = context.dob.trim();
         const expectedName = context.expected_name.trim();
+        const userId = resolveToolUserId(runtimeContext);
 
         const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -48,6 +55,17 @@ export const verifyKYC = createTool({
                         full_name: kycName,
                     };
                 }
+
+                await User.findByIdAndUpdate(
+                    userId,
+                    {
+                        $set: {
+                            encryptedAadhaar: encryptPII(aadhar_no),
+                            hasVerifiedKyc: true,
+                        },
+                    },
+                    { new: false }
+                );
 
                 return {
                     success: true,
