@@ -264,8 +264,11 @@ JWT_SECRET=your_super_secret_jwt_key_min_32_chars
 | [tools.md](./tools.md) | All 7 agent-callable tools with input/output schemas |
 | [models.md](./models.md) | MongoDB Mongoose schemas (User, Loan, KYC, Credit, PolicyDocument) |
 | [rag.md](./rag.md) | RAG pipeline — PDF ingestion, vector embeddings, semantic search, policy Q&A |
+| [security.md](./security.md) | **Secure Store** — AES-256-GCM encryption for PII data (PAN/Aadhaar) |
 | [secondperson.md](./secondperson.md) | Returning user detection, session hydration, KYC skip, fast-path flow |
-| [test.md](./test.md) | Test scenarios, fixtures, and how to run them |
+| [testing.md](./testing.md) | **Testing Strategy** — Unit & Integration tests, tooling setup (Vitest) |
+| [test.md](./test.md) | **Test Fixtures & Scenarios** — Reference data and manual test paths |
+| [conclusion.md](./conclusion.md) | **Conclusion & Future Scope** — Project wrap-up and evolutionary roadmap |
 
 ---
 
