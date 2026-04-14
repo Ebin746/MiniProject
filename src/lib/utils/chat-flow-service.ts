@@ -127,7 +127,7 @@ export async function generateAgentResponse(params: {
       resourceId: userId,
       runtimeContext: {
         userId,
-      },
+      } as any,
     });
   } catch (generateError) {
     if (!isWorkingMemoryToolParseError(generateError)) {
@@ -143,7 +143,7 @@ export async function generateAgentResponse(params: {
       resourceId: userId,
       runtimeContext: {
         userId,
-      },
+      } as any,
     });
     usedNoMemoryRetry = true;
   }

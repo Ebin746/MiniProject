@@ -162,7 +162,7 @@ export default function SignUpPage() {
                         ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                         : "bg-slate-50/50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     }`}
-                    placeholder="Ebin Amson"
+                    placeholder="John Doe"
                     value={formData.name}
                     onChange={handleChange}
                   />
