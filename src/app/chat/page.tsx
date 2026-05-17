@@ -61,6 +61,8 @@ export default function Home() {
   const previewUrlsRef = useRef<string[]>([]);
   const mounted = resolvedTheme !== undefined;
   const isDark = resolvedTheme === 'dark';
+  const demoBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const demoDownloadBase = demoBaseUrl ? `${demoBaseUrl}/loanPassing` : '/loanPassing';
 
   const createMessageId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -430,7 +432,8 @@ export default function Home() {
       <div className={`relative z-10 border-t p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] backdrop-blur-xl sm:p-6 ${
         isDark ? 'border-zinc-800 bg-zinc-900/90' : 'border-zinc-200 bg-white/90'
       }`}>
-        <div className="relative mx-auto flex w-full max-w-4xl items-center gap-2 sm:gap-3">
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-2 sm:gap-3">
+          <div className="flex w-full items-center gap-2 sm:gap-3">
           <input
             type="file"
             ref={fileInputRef}
@@ -472,6 +475,39 @@ export default function Home() {
             <Send size={16} className="sm:hidden" />
             <span className="hidden sm:inline">Send</span>
           </button>
+          </div>
+          <div className={`flex flex-wrap items-center gap-2 text-[11px] ${
+            isDark ? 'text-zinc-400' : 'text-zinc-500'
+          }`}>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-[0_0_12px_rgba(99,102,241,0.25)] ring-1 ring-indigo-500/30 motion-safe:animate-pulse ${
+              isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-500'
+            }`}>
+              Demo data
+            </span>
+            <a
+              href={`${demoDownloadBase}/aadhaar.png`}
+              className="text-indigo-500 hover:text-indigo-400 underline"
+              download
+            >
+              Aadhaar
+            </a>
+            <span className={isDark ? 'text-zinc-600' : 'text-zinc-300'}>|</span>
+            <a
+              href={`${demoDownloadBase}/pan.png`}
+              className="text-indigo-500 hover:text-indigo-400 underline"
+              download
+            >
+              PAN
+            </a>
+            <span className={isDark ? 'text-zinc-600' : 'text-zinc-300'}>|</span>
+            <a
+              href={`${demoDownloadBase}/salary.png`}
+              className="text-indigo-500 hover:text-indigo-400 underline"
+              download
+            >
+              Salary slip
+            </a>
+          </div>
         </div>
 
       </div>
